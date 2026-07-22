@@ -23,7 +23,10 @@ export function useWorktreeResync(args: {
     if (prev !== 'connected' && connState === 'connected' && client) {
       void fetchWorktrees({ allowDuringModal: true })
     }
-  }, [connState, client, fetchWorktrees, fetchRepoMetadata])
+    // Why: repo metadata refetch on reconnect is owned by startHostWorktreeRefresh (mount +
+    // reposChanged + stream replay); this effect only refetches worktrees, so fetchRepoMetadata
+    // is intentionally not a dependency here.
+  }, [connState, client, fetchWorktrees])
 
   const [refreshing, setRefreshing] = useState(false)
   // Why (#8498): let the user force a fresh snapshot instead of the possibly-poisoned cache.
