@@ -76,11 +76,17 @@ export const createRemoteServerUpdatesSlice: StateCreator<
       const listed = await window.api.runtimeEnvironments.list()
       const environments = listed.filter(isUserManagedRuntimeEnvironment)
       get().setRuntimeEnvironments(listed)
+      const previous = get().remoteServerUpdates
       const initial = new Map(
-        environments.map((environment) => [
-          environment.id,
-          checkingRemoteServerUpdateEntry(environment)
-        ])
+        environments.map((environment) => {
+          const existing = previous.get(environment.id)
+          return [
+            environment.id,
+            existing
+              ? { ...existing, name: environment.name }
+              : checkingRemoteServerUpdateEntry(environment)
+          ]
+        })
       )
       set({ remoteServerUpdates: initial })
       const clientVersion = await window.api.updater.getVersion()

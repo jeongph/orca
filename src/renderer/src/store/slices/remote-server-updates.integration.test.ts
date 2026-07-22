@@ -61,26 +61,29 @@ describe('remote server updates mixed inventory', () => {
     environment('offline')
   ]
   const setRuntimeEnvironments = vi.fn()
+  const getStatus = vi.fn()
 
   beforeEach(() => {
     setRuntimeEnvironments.mockReset()
+    getStatus.mockReset()
+    getStatus.mockImplementation(async ({ selector }: { selector: string }) => {
+      if (selector === 'offline') {
+        throw new Error('connection refused')
+      }
+      if (selector === 'eligible') {
+        return statusResult(selector, '1.4.0', true)
+      }
+      if (selector === 'current') {
+        return statusResult(selector, '1.5.0', true)
+      }
+      return statusResult(selector, null, false)
+    })
     vi.stubGlobal('window', {
       api: {
         updater: { getVersion: vi.fn(async () => '1.5.0') },
         runtimeEnvironments: {
           list: vi.fn(async () => environments),
-          getStatus: vi.fn(async ({ selector }: { selector: string }) => {
-            if (selector === 'offline') {
-              throw new Error('connection refused')
-            }
-            if (selector === 'eligible') {
-              return statusResult(selector, '1.4.0', true)
-            }
-            if (selector === 'current') {
-              return statusResult(selector, '1.5.0', true)
-            }
-            return statusResult(selector, null, false)
-          }),
+          getStatus,
           call: vi.fn()
         }
       },
@@ -109,5 +112,38 @@ describe('remote server updates mixed inventory', () => {
     })
     expect(setRuntimeEnvironments).toHaveBeenCalledWith(environments)
     expect(store.getState().remoteServerUpdatesChecking).toBe(false)
+  })
+
+  it('keeps settled rows stable while checking again', async () => {
+    const createSlice = createRemoteServerUpdatesSlice as unknown as StateCreator<TestState>
+    const store = create<TestState>()((...args) => ({
+      ...createSlice(...args),
+      setRuntimeEnvironments
+    }))
+    await store.getState().refreshRemoteServerUpdates()
+
+    let releaseChecks!: () => void
+    const checksBlocked = new Promise<void>((resolve) => {
+      releaseChecks = resolve
+    })
+    getStatus.mockImplementation(async ({ selector }: { selector: string }) => {
+      await checksBlocked
+      return statusResult(selector, '1.5.0', true)
+    })
+
+    const refresh = store.getState().refreshRemoteServerUpdates()
+    await vi.waitFor(() => expect(store.getState().remoteServerUpdatesChecking).toBe(true))
+
+    expect(store.getState().remoteServerUpdates.get('current')).toMatchObject({
+      phase: 'current',
+      currentVersion: '1.5.0'
+    })
+    expect(store.getState().remoteServerUpdates.get('eligible')).toMatchObject({
+      phase: 'available',
+      currentVersion: '1.4.0'
+    })
+
+    releaseChecks()
+    await refresh
   })
 })
