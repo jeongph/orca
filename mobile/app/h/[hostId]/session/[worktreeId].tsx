@@ -2706,14 +2706,25 @@ export default function SessionScreen() {
       if (connState !== 'connected') {
         return
       }
-      void fetchSessionTabs()
-      void fetchTerminals()
-      // Why: live subscription keeps stream ownership, but the fallback list poll should stop while this route is hidden.
-      const interval = setInterval(() => {
+      const refreshOnForeground = () => {
+        if (AppState.currentState !== 'active') {
+          return
+        }
         void fetchSessionTabs()
         void fetchTerminals()
-      }, 2000)
-      return () => clearInterval(interval)
+      }
+      const appStateSubscription = AppState.addEventListener('change', (state) => {
+        if (state === 'active') {
+          refreshOnForeground()
+        }
+      })
+      // Why: live subscription keeps stream ownership, but the fallback list poll should stop while this route is hidden or backgrounded.
+      const interval = setInterval(refreshOnForeground, 2000)
+      refreshOnForeground()
+      return () => {
+        clearInterval(interval)
+        appStateSubscription.remove()
+      }
     }, [connState, fetchSessionTabs, fetchTerminals])
   )
 
