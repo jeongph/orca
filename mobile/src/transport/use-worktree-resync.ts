@@ -10,7 +10,7 @@ export function useWorktreeResync(args: {
   client: RpcClient | null
   connState: ConnectionState
   fetchWorktrees: (opts?: { allowDuringModal?: boolean }) => Promise<void>
-  fetchRepoMetadata: () => Promise<void>
+  fetchRepoMetadata: (options?: { force?: boolean; queueIfInFlight?: boolean }) => Promise<void>
 }): { refreshing: boolean; onRefresh: () => Promise<void> } {
   const { client, connState, fetchWorktrees, fetchRepoMetadata } = args
 
@@ -22,7 +22,6 @@ export function useWorktreeResync(args: {
     prevConnStateRef.current = connState
     if (prev !== 'connected' && connState === 'connected' && client) {
       void fetchWorktrees({ allowDuringModal: true })
-      void fetchRepoMetadata()
     }
   }, [connState, client, fetchWorktrees, fetchRepoMetadata])
 
@@ -35,7 +34,7 @@ export function useWorktreeResync(args: {
     setRefreshing(true)
     try {
       await fetchWorktrees({ allowDuringModal: true })
-      await fetchRepoMetadata()
+      await fetchRepoMetadata({ force: true })
     } finally {
       setRefreshing(false)
     }
