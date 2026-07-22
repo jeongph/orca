@@ -13,7 +13,7 @@ import {
   Share2,
   Trash2
 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useMountedRef } from '@/hooks/useMountedRef'
 import type { GlobalSettings } from '../../../../shared/types'
@@ -70,6 +70,7 @@ type RuntimeEnvironmentsPaneProps = {
   switchRuntimeEnvironment: (environmentId: string | null) => Promise<boolean>
   canGeneratePairingUrl?: boolean
   allowLocalRuntime?: boolean
+  addServerIntentSignal?: number
 }
 
 export type RuntimeHostDetails = {
@@ -252,7 +253,8 @@ export function RuntimeEnvironmentsPane({
   settings,
   switchRuntimeEnvironment,
   canGeneratePairingUrl = true,
-  allowLocalRuntime = true
+  allowLocalRuntime = true,
+  addServerIntentSignal
 }: RuntimeEnvironmentsPaneProps): React.JSX.Element {
   const [environments, setEnvironments] = useState<PublicKnownRuntimeEnvironment[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -280,6 +282,7 @@ export function RuntimeEnvironmentsPane({
   const setRemoteServerUpdateDialogOpen = useAppStore(
     (state) => state.setRemoteServerUpdateDialogOpen
   )
+  const consumedAddServerIntentSignalRef = useRef(0)
   const mountedRef = useMountedRef()
   const activeValue =
     settings.activeRuntimeEnvironmentId ??
@@ -397,6 +400,18 @@ export function RuntimeEnvironmentsPane({
   useEffect(() => {
     void refreshRemoteServerUpdates()
   }, [environmentIdsKey, refreshRemoteServerUpdates])
+  useEffect(() => {
+    if (
+      !addServerIntentSignal ||
+      consumedAddServerIntentSignalRef.current === addServerIntentSignal
+    ) {
+      return
+    }
+    consumedAddServerIntentSignalRef.current = addServerIntentSignal
+    // Why: composer deep-links should land on the existing pairing form, not just
+    // the server list.
+    setAddServerFormOpen(true)
+  }, [addServerIntentSignal])
 
   const closeAddServerForm = (): void => {
     if (isSaving) {
