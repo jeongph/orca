@@ -117,6 +117,7 @@ export class RpcDispatcher {
       connectionId?: string
       signal?: AbortSignal
       clientId?: string
+      pairedDeviceId?: string
       clientKind?: 'mobile' | 'runtime'
       pairing?: PairingRpcContext
       sendBinary?: (bytes: Uint8Array<ArrayBufferLike>) => boolean | void
@@ -152,6 +153,7 @@ export class RpcDispatcher {
             requestId: request.id,
             connectionId: options?.connectionId,
             clientId: options?.clientId,
+            pairedDeviceId: options?.pairedDeviceId,
             clientKind: options?.clientKind,
             orchestrationCapability: request.orchestrationCapability,
             authenticatedCallerFingerprint: authenticatedCallerFingerprint(request),
@@ -192,7 +194,9 @@ export class RpcDispatcher {
           requestId: request.id,
           connectionId: options?.connectionId,
           clientId: options?.clientId,
+          pairedDeviceId: options?.pairedDeviceId,
           clientKind: options?.clientKind,
+          pairing: options?.pairing,
           sendBinary: options?.sendBinary,
           registerBinaryStreamHandler: options?.registerBinaryStreamHandler
         },

@@ -14,7 +14,10 @@ import type { AgentHookInstallStatus } from '../shared/agent-hook-types'
 import type { TerminalPaneSplitSource } from '../shared/feature-education-telemetry'
 import type { ProjectExecutionRuntimeResolution } from '../shared/project-execution-runtime'
 import type { StartupCommandDelivery } from '../shared/codex-startup-delivery'
-import type { SleepingAgentLaunchConfig } from '../shared/agent-session-resume'
+import type {
+  AgentProviderSessionMetadata,
+  SleepingAgentLaunchConfig
+} from '../shared/agent-session-resume'
 import type { MobileRelayStatus } from '../shared/mobile-relay-status'
 import type { MobilePairingConnectionMode } from '../shared/mobile-pairing-connection-mode'
 import type {
@@ -30,6 +33,7 @@ import type {
   GitHubAssignableUser,
   GitHubCommentResult,
   GitHubCreateIssueResult,
+  GitHubOwnerRepo,
   GitHubWorkItem,
   JiraProjectStatusOrder,
   GitPushTarget,
@@ -113,6 +117,7 @@ import type {
   GetProjectViewTableResult,
   GitHubProjectCommentMutationResult,
   GitHubProjectMutationResult,
+  ListAccessibleProjectsArgs,
   ListAccessibleProjectsResult,
   ListAssignableUsersBySlugArgs,
   ListAssignableUsersBySlugResult,
@@ -795,6 +800,7 @@ const api = {
       envToDelete?: string[]
       command?: string
       launchConfig?: SleepingAgentLaunchConfig
+      resumeProviderSession?: AgentProviderSessionMetadata
       launchToken?: string
       launchAgent?: TuiAgent
       startupCommandDelivery?: StartupCommandDelivery
@@ -1036,7 +1042,9 @@ const api = {
     getSideEffectSnapshot: (id: string): Promise<TerminalSideEffectBatch | null> =>
       ipcRenderer.invoke('pty:sideEffectSnapshot', { id }),
 
-    onExit: (callback: (data: { id: string; code: number }) => void): (() => void) => {
+    onExit: (
+      callback: (data: { id: string; code: number; preserveRendererBinding?: boolean }) => void
+    ): (() => void) => {
       const listener = (_event: Electron.IpcRendererEvent, data: { id: string; code: number }) =>
         callback(data)
       ipcRenderer.on('pty:exit', listener)
@@ -1199,6 +1207,7 @@ const api = {
       repoId?: string
       owner: string
       repo: string
+      host?: string
       number: number
       type: 'issue' | 'pr'
     }): Promise<unknown> => ipcRenderer.invoke('gh:workItemByOwnerRepo', args),
@@ -1223,6 +1232,7 @@ const api = {
       repoId?: string
       sourceContext?: TaskSourceContext | null
       prNumber: number
+      prRepo?: GitHubOwnerRepo | null
       path: string
       oldPath?: string
       status: string
@@ -1265,7 +1275,7 @@ const api = {
       sourceContext?: TaskSourceContext | null
       prNumber: number
       headSha?: string
-      prRepo?: { owner: string; repo: string } | null
+      prRepo?: GitHubOwnerRepo | null
       noCache?: boolean
     }): Promise<unknown[]> => ipcRenderer.invoke('gh:prChecks', args),
 
@@ -1277,7 +1287,7 @@ const api = {
       workflowRunId?: number
       checkName?: string
       url?: string | null
-      prRepo?: { owner: string; repo: string } | null
+      prRepo?: GitHubOwnerRepo | null
     }): Promise<unknown | null> => ipcRenderer.invoke('gh:prCheckDetails', args),
 
     rerunPRChecks: (args: {
@@ -1287,6 +1297,7 @@ const api = {
       prNumber: number
       headSha?: string
       failedOnly?: boolean
+      prRepo?: GitHubOwnerRepo | null
     }): Promise<{ ok: true; count: number } | { ok: false; error: string }> =>
       ipcRenderer.invoke('gh:rerunPRChecks', args),
 
@@ -1295,7 +1306,7 @@ const api = {
       repoId?: string
       sourceContext?: TaskSourceContext | null
       prNumber: number
-      prRepo?: { owner: string; repo: string } | null
+      prRepo?: GitHubOwnerRepo | null
       noCache?: boolean
     }): Promise<unknown[]> => ipcRenderer.invoke('gh:prComments', args),
 
@@ -1305,6 +1316,7 @@ const api = {
       sourceContext?: TaskSourceContext | null
       threadId: string
       resolve: boolean
+      prRepo?: GitHubOwnerRepo | null
     }): Promise<boolean> => ipcRenderer.invoke('gh:resolveReviewThread', args),
 
     setPRFileViewed: (args: {
@@ -1312,6 +1324,7 @@ const api = {
       repoId?: string
       sourceContext?: TaskSourceContext | null
       prNumber: number
+      prRepo?: GitHubOwnerRepo | null
       pullRequestId: string
       path: string
       viewed: boolean
@@ -1322,7 +1335,7 @@ const api = {
       repoId?: string
       prNumber: number
       title: string
-      prRepo?: { owner: string; repo: string } | null
+      prRepo?: GitHubOwnerRepo | null
     }): Promise<boolean> => ipcRenderer.invoke('gh:updatePRTitle', args),
 
     mergePR: (args: {
@@ -1331,7 +1344,7 @@ const api = {
       sourceContext?: TaskSourceContext | null
       prNumber: number
       method?: 'merge' | 'squash' | 'rebase'
-      prRepo?: { owner: string; repo: string } | null
+      prRepo?: GitHubOwnerRepo | null
     }): Promise<{ ok: true } | { ok: false; error: string }> =>
       ipcRenderer.invoke('gh:mergePR', args),
 
@@ -1342,7 +1355,7 @@ const api = {
       prNumber: number
       enabled: boolean
       method?: 'merge' | 'squash' | 'rebase'
-      prRepo?: { owner: string; repo: string } | null
+      prRepo?: GitHubOwnerRepo | null
     }): Promise<{ ok: true } | { ok: false; error: string }> =>
       ipcRenderer.invoke('gh:setPRAutoMerge', args),
 
@@ -1352,6 +1365,7 @@ const api = {
       sourceContext?: TaskSourceContext | null
       prNumber: number
       updates: { state: 'open' | 'closed' }
+      prRepo?: GitHubOwnerRepo | null
     }): Promise<{ ok: true } | { ok: false; error: string }> =>
       ipcRenderer.invoke('gh:updatePRState', args),
 
@@ -1361,6 +1375,7 @@ const api = {
       sourceContext?: TaskSourceContext | null
       prNumber: number
       reviewers: string[]
+      prRepo?: GitHubOwnerRepo | null
     }): Promise<{ ok: true } | { ok: false; error: string }> =>
       ipcRenderer.invoke('gh:requestPRReviewers', args),
 
@@ -1370,6 +1385,7 @@ const api = {
       sourceContext?: TaskSourceContext | null
       prNumber: number
       reviewers: string[]
+      prRepo?: GitHubOwnerRepo | null
     }): Promise<{ ok: true } | { ok: false; error: string }> =>
       ipcRenderer.invoke('gh:removePRReviewers', args),
 
@@ -1389,7 +1405,7 @@ const api = {
       number: number
       body: string
       type?: 'issue' | 'pr'
-      prRepo?: { owner: string; repo: string } | null
+      prRepo?: GitHubOwnerRepo | null
     }): Promise<GitHubCommentResult> => ipcRenderer.invoke('gh:addIssueComment', args),
 
     addPRReviewCommentReply: (args: {
@@ -1402,7 +1418,7 @@ const api = {
       threadId?: string
       path?: string
       line?: number
-      prRepo?: { owner: string; repo: string } | null
+      prRepo?: GitHubOwnerRepo | null
     }): Promise<GitHubCommentResult> => ipcRenderer.invoke('gh:addPRReviewCommentReply', args),
 
     addPRReviewComment: (args: {
@@ -1410,6 +1426,7 @@ const api = {
       repoId?: string
       sourceContext?: TaskSourceContext | null
       prNumber: number
+      prRepo?: GitHubOwnerRepo | null
       commitId: string
       path: string
       line: number
@@ -1454,11 +1471,14 @@ const api = {
     rateLimit: (args?: { force?: boolean }): Promise<GetRateLimitResult> =>
       ipcRenderer.invoke('gh:rateLimit', args),
 
-    diagnoseAuth: (): Promise<GhAuthDiagnostic> => ipcRenderer.invoke('gh:diagnoseAuth'),
+    diagnoseAuth: (args?: { host?: string }): Promise<GhAuthDiagnostic> =>
+      ipcRenderer.invoke('gh:diagnoseAuth', args),
 
     // ── ProjectV2 (GitHub Projects) ───────────────────────────────────
-    listAccessibleProjects: (): Promise<ListAccessibleProjectsResult> =>
-      ipcRenderer.invoke('gh:listAccessibleProjects'),
+    listAccessibleProjects: (
+      args?: ListAccessibleProjectsArgs
+    ): Promise<ListAccessibleProjectsResult> =>
+      ipcRenderer.invoke('gh:listAccessibleProjects', args),
     resolveProjectRef: (args: ResolveProjectRefArgs): Promise<ResolveProjectRefResult> =>
       ipcRenderer.invoke('gh:resolveProjectRef', args),
     listProjectViews: (args: ListProjectViewsArgs): Promise<ListProjectViewsResult> =>
@@ -3473,6 +3493,7 @@ const api = {
         cwd?: string
         env?: Record<string, string>
         launchConfig?: SleepingAgentLaunchConfig
+        resumeProviderSession?: AgentProviderSessionMetadata
         launchToken?: string
         launchAgent?: TuiAgent
         viewMode?: 'terminal' | 'chat'
@@ -3496,6 +3517,7 @@ const api = {
           cwd?: string
           env?: Record<string, string>
           launchConfig?: SleepingAgentLaunchConfig
+          resumeProviderSession?: AgentProviderSessionMetadata
           launchToken?: string
           launchAgent?: TuiAgent
           viewMode?: 'terminal' | 'chat'

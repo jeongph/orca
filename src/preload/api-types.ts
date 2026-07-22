@@ -63,7 +63,10 @@ import type { TaskSourceContext } from '../shared/task-source-context'
 import type { LinearIssueAttributeFilter } from '../shared/linear-issue-attribute-filter'
 import type { ProjectExecutionRuntimeResolution } from '../shared/project-execution-runtime'
 import type { StartupCommandDelivery } from '../shared/codex-startup-delivery'
-import type { SleepingAgentLaunchConfig } from '../shared/agent-session-resume'
+import type {
+  AgentProviderSessionMetadata,
+  SleepingAgentLaunchConfig
+} from '../shared/agent-session-resume'
 import type {
   LocalhostWorktreeLabelResult,
   LocalhostWorktreeLabelRoute
@@ -263,6 +266,7 @@ import type {
   GetProjectViewTableResult,
   GitHubProjectCommentMutationResult,
   GitHubProjectMutationResult,
+  ListAccessibleProjectsArgs,
   ListAccessibleProjectsResult,
   ListAssignableUsersBySlugArgs,
   ListAssignableUsersBySlugResult,
@@ -1289,6 +1293,7 @@ export type PreloadApi = {
       envToDelete?: string[]
       command?: string
       launchConfig?: SleepingAgentLaunchConfig
+      resumeProviderSession?: AgentProviderSessionMetadata
       launchToken?: string
       launchAgent?: TuiAgent
       startupCommandDelivery?: StartupCommandDelivery
@@ -1437,7 +1442,9 @@ export type PreloadApi = {
     onSideEffect: (callback: (batch: TerminalSideEffectBatch) => void) => () => void
     /** Title-only replay snapshot for (re)attach; attention facts never replay. */
     getSideEffectSnapshot: (id: string) => Promise<TerminalSideEffectBatch | null>
-    onExit: (callback: (data: { id: string; code: number }) => void) => () => void
+    onExit: (
+      callback: (data: { id: string; code: number; preserveRendererBinding?: boolean }) => void
+    ) => () => void
     onSerializeBufferRequest: (
       callback: (data: {
         requestId: string
@@ -1489,11 +1496,11 @@ export type PreloadApi = {
     repoSlug: (args: {
       repoPath: string
       repoId?: string
-    }) => Promise<{ owner: string; repo: string } | null>
+    }) => Promise<{ owner: string; repo: string; host?: string } | null>
     repoUpstream: (args: {
       repoPath: string
       repoId?: string
-    }) => Promise<{ owner: string; repo: string } | null>
+    }) => Promise<{ owner: string; repo: string; host?: string } | null>
     prForBranch: (args: {
       repoPath: string
       repoId?: string
@@ -1532,6 +1539,7 @@ export type PreloadApi = {
       repoId?: string
       owner: string
       repo: string
+      host?: string
       number: number
       type: 'issue' | 'pr'
     }) => Promise<Omit<GitHubWorkItem, 'repoId'> | null>
@@ -1550,6 +1558,7 @@ export type PreloadApi = {
     prFileContents: (
       args: GitHubRepoSelectorArgs & {
         prNumber: number
+        prRepo?: GitHubOwnerRepo | null
         path: string
         oldPath?: string
         status: GitHubPRFile['status']
@@ -1603,6 +1612,7 @@ export type PreloadApi = {
         prNumber: number
         headSha?: string
         failedOnly?: boolean
+        prRepo?: GitHubOwnerRepo | null
       }
     ) => Promise<{ ok: true; count: number } | { ok: false; error: string }>
     prComments: (args: {
@@ -1619,10 +1629,12 @@ export type PreloadApi = {
       sourceContext?: TaskSourceContext | null
       threadId: string
       resolve: boolean
+      prRepo?: GitHubOwnerRepo | null
     }) => Promise<boolean>
     setPRFileViewed: (
       args: GitHubRepoSelectorArgs & {
         prNumber: number
+        prRepo?: GitHubOwnerRepo | null
         pullRequestId: string
         path: string
         viewed: boolean
@@ -1654,18 +1666,21 @@ export type PreloadApi = {
       args: GitHubRepoSelectorArgs & {
         prNumber: number
         updates: { state: 'open' | 'closed' }
+        prRepo?: GitHubOwnerRepo | null
       }
     ) => Promise<{ ok: true } | { ok: false; error: string }>
     requestPRReviewers: (
       args: GitHubRepoSelectorArgs & {
         prNumber: number
         reviewers: string[]
+        prRepo?: GitHubOwnerRepo | null
       }
     ) => Promise<{ ok: true } | { ok: false; error: string }>
     removePRReviewers: (
       args: GitHubRepoSelectorArgs & {
         prNumber: number
         reviewers: string[]
+        prRepo?: GitHubOwnerRepo | null
       }
     ) => Promise<{ ok: true } | { ok: false; error: string }>
     updateIssue: (
@@ -1728,9 +1743,11 @@ export type PreloadApi = {
      */
     rateLimit: (args?: { force?: boolean }) => Promise<GetRateLimitResult>
     /** Explains scope_missing ProjectV2 failures — notably a shell `GITHUB_TOKEN` shadowing the keyring credential, where `gh auth refresh` is a no-op. */
-    diagnoseAuth: () => Promise<GhAuthDiagnostic>
+    diagnoseAuth: (args?: { host?: string }) => Promise<GhAuthDiagnostic>
     // ── ProjectV2 (GitHub Projects) ─────────────────────────────────
-    listAccessibleProjects: () => Promise<ListAccessibleProjectsResult>
+    listAccessibleProjects: (
+      args?: ListAccessibleProjectsArgs
+    ) => Promise<ListAccessibleProjectsResult>
     resolveProjectRef: (args: ResolveProjectRefArgs) => Promise<ResolveProjectRefResult>
     listProjectViews: (args: ListProjectViewsArgs) => Promise<ListProjectViewsResult>
     getProjectViewTable: (args: GetProjectViewTableArgs) => Promise<GetProjectViewTableResult>
@@ -2867,6 +2884,7 @@ export type PreloadApi = {
         cwd?: string
         env?: Record<string, string>
         launchConfig?: SleepingAgentLaunchConfig
+        resumeProviderSession?: AgentProviderSessionMetadata
         launchToken?: string
         launchAgent?: TuiAgent
         viewMode?: 'terminal' | 'chat'
