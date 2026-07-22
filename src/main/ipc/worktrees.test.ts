@@ -2306,6 +2306,67 @@ describe('registerWorktreeHandlers', () => {
     })
   })
 
+  it('hydrates detected worktrees with instance-validated legacy lineage after an update', async () => {
+    const parentPath = '/workspace/assigned-issues'
+    const childPath = '/workspace/issue-9276-nested-ssh-runtime-routing'
+    const parentId = `repo-1::${parentPath}`
+    const childId = `repo-1::${childPath}`
+    const metaById: Record<string, { instanceId: string }> = {
+      [parentId]: { instanceId: 'parent-instance' },
+      [childId]: { instanceId: 'child-instance' }
+    }
+    store.getWorktreeMeta.mockImplementation((id: string) => metaById[id])
+    store.setWorktreeMeta.mockImplementation((id: string, updates: object) => ({
+      ...metaById[id],
+      ...updates
+    }))
+    store.getAllWorktreeLineage.mockReturnValue({
+      [childId]: {
+        worktreeId: childId,
+        worktreeInstanceId: 'child-instance',
+        parentWorktreeId: parentId,
+        parentWorktreeInstanceId: 'parent-instance',
+        origin: 'cli',
+        capture: { source: 'explicit-cli-flag', confidence: 'explicit' },
+        createdAt: 1
+      }
+    })
+    listWorktreesMock.mockResolvedValue([
+      {
+        path: childPath,
+        head: 'child-head',
+        branch: 'refs/heads/child',
+        isBare: false,
+        isMainWorktree: false
+      },
+      {
+        path: parentPath,
+        head: 'parent-head',
+        branch: 'refs/heads/parent',
+        isBare: false,
+        isMainWorktree: false
+      }
+    ])
+
+    const result = (await handlers['worktrees:listDetected'](null, {
+      repoId: 'repo-1'
+    })) as { worktrees: (Worktree & { lineage?: unknown; parentWorktreeId?: string | null })[] }
+
+    expect(result.worktrees).toEqual([
+      expect.objectContaining({
+        id: childId,
+        parentWorktreeId: parentId,
+        lineage: expect.objectContaining({ parentWorktreeInstanceId: 'parent-instance' })
+      }),
+      expect.objectContaining({
+        id: parentId,
+        parentWorktreeId: null,
+        childWorktreeIds: [childId],
+        lineage: null
+      })
+    ])
+  })
+
   it('hides agent scratch created inside a linked checkout from desktop listings', async () => {
     const linkedCheckoutPath = '/workspace/feature-x'
     const scratchPath = `${linkedCheckoutPath}/.claude/worktrees/agent-a04ccaaa`

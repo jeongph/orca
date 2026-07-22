@@ -301,6 +301,7 @@ import {
   parseWorkspaceKey,
   worktreeWorkspaceKey
 } from '../../shared/workspace-scope'
+import { projectResolvedWorktreeLineage } from '../../shared/resolved-worktree-lineage'
 import { folderWorkspaceToWorktree } from '../../shared/folder-workspace-worktree'
 import type {
   FolderWorkspacePathStatus,
@@ -16460,8 +16461,9 @@ export class OrcaRuntimeService {
 
   async listDetectedManagedWorktrees(repoSelector: string): Promise<DetectedWorktreeListResult> {
     const repo = await this.resolveRepoSelector(repoSelector)
+    const store = this.requireStore()
     if (isFolderRepo(repo)) {
-      const worktrees = listRuntimeFolderWorkspaces(this.requireStore(), repo)
+      const worktrees = listRuntimeFolderWorkspaces(store, repo)
       return {
         repoId: repo.id,
         authoritative: true,
@@ -16484,7 +16486,7 @@ export class OrcaRuntimeService {
     ])
     const detected = scan.worktrees.map((gitWorktree) => {
       const worktreeId = `${repo.id}::${gitWorktree.path}`
-      const meta = this.store?.getWorktreeMeta(worktreeId)
+      const meta = store.getWorktreeMeta(worktreeId)
       const worktree = mergeWorktree(repo.id, gitWorktree, meta, repo.displayName)
       const detectedWorktree = this.toRuntimeDetectedWorktree(
         repo,
@@ -16500,7 +16502,7 @@ export class OrcaRuntimeService {
       repoId: repo.id,
       authoritative: scan.ok,
       source: scan.ok ? 'git' : 'metadata-fallback',
-      worktrees: detected
+      worktrees: projectResolvedWorktreeLineage(detected, store.getAllWorktreeLineage?.() ?? {})
     }
   }
 
@@ -23212,7 +23214,10 @@ export class OrcaRuntimeService {
         })
       })
     )
-    const worktrees = this.attachLineageToResolvedWorktrees(perRepoWorktrees.flat())
+    const worktrees = projectResolvedWorktreeLineage(
+      perRepoWorktrees.flat(),
+      this.store?.getAllWorktreeLineage?.() ?? {}
+    )
     // Why: short TTL avoids shelling out on every frequent poll while still catching worktree changes made outside Orca.
     if (generation === this.resolvedWorktreeGeneration) {
       this.resolvedWorktreeCache = {
@@ -23222,41 +23227,6 @@ export class OrcaRuntimeService {
       }
     }
     return { worktrees, platformByRepoId }
-  }
-
-  private attachLineageToResolvedWorktrees(worktrees: ResolvedWorktree[]): ResolvedWorktree[] {
-    const lineageById = this.store?.getAllWorktreeLineage?.() ?? {}
-    const worktreeById = new Map(worktrees.map((worktree) => [worktree.id, worktree]))
-    const validLineageByChildId = new Map<string, WorktreeLineage>()
-    const childIdsByParentId = new Map<string, string[]>()
-
-    for (const [childId, lineage] of Object.entries(lineageById)) {
-      const child = worktreeById.get(childId)
-      const parent = worktreeById.get(lineage.parentWorktreeId)
-      if (
-        !child ||
-        !parent ||
-        child.instanceId !== lineage.worktreeInstanceId ||
-        parent.instanceId !== lineage.parentWorktreeInstanceId
-      ) {
-        // Why: worktree IDs are path-derived, so instance checks keep replacement checkouts off stale same-path lineage.
-        continue
-      }
-      validLineageByChildId.set(childId, lineage)
-      const children = childIdsByParentId.get(lineage.parentWorktreeId) ?? []
-      children.push(childId)
-      childIdsByParentId.set(lineage.parentWorktreeId, children)
-    }
-
-    return worktrees.map((worktree) => {
-      const lineage = validLineageByChildId.get(worktree.id) ?? null
-      return {
-        ...worktree,
-        parentWorktreeId: lineage?.parentWorktreeId ?? null,
-        childWorktreeIds: childIdsByParentId.get(worktree.id) ?? [],
-        lineage
-      }
-    })
   }
 
   private pruneLineageForMissingRepoWorktrees(repo: Repo, gitWorktrees: GitWorktreeInfo[]): void {

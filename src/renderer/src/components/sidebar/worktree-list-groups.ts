@@ -378,18 +378,38 @@ export type LineageRenderInfo =
   | { state: 'valid'; lineage: WorktreeLineage; parent: Worktree }
   | { state: 'missing'; lineage: WorktreeLineage }
 
+type WorktreeWithResolvedLineage = Worktree & { lineage?: WorktreeLineage | null }
+
+function getProjectedWorktreeLineage(
+  worktree: Worktree,
+  lineageById: Record<string, WorktreeLineage>
+): WorktreeLineage | null | undefined {
+  if (Object.prototype.hasOwnProperty.call(lineageById, worktree.id)) {
+    return lineageById[worktree.id]
+  }
+  return (worktree as WorktreeWithResolvedLineage).lineage
+}
+
 export function getLineageRenderInfo(
   worktree: Worktree,
   lineageById: Record<string, WorktreeLineage>,
   worktreeMap: Map<string, Worktree>
 ): LineageRenderInfo {
-  const lineage = lineageById[worktree.id]
+  const lineage = getProjectedWorktreeLineage(worktree, lineageById)
   if (!lineage) {
     return { state: 'none' }
   }
   const parent = worktreeMap.get(lineage.parentWorktreeId)
   if (
     !parent ||
+    lineage.worktreeId !== worktree.id ||
+    worktree.repoId !== parent.repoId ||
+    (worktree.hostId !== undefined &&
+      parent.hostId !== undefined &&
+      worktree.hostId !== parent.hostId) ||
+    (worktree.projectId !== undefined &&
+      parent.projectId !== undefined &&
+      worktree.projectId !== parent.projectId) ||
     worktree.instanceId !== lineage.worktreeInstanceId ||
     parent.instanceId !== lineage.parentWorktreeInstanceId
   ) {
