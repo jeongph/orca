@@ -3499,31 +3499,24 @@ describe('buildRows workspace lineage nesting', () => {
     expect(rows.filter((row) => row.type === 'item').map((row) => row.depth)).toEqual([0, 0])
   })
 
-  it.each(['missing', 'filtered out'])(
-    'keeps a resolved child at the root when its parent is %s',
-    (state) => {
-      const resolvedChild: ResolvedLineageWorktree = { ...child, lineage }
-      const map = new Map<string, Worktree>([[child.id, resolvedChild]])
-      if (state === 'filtered out') {
-        map.set(parent.id, parent)
-      }
-      const rows = buildRows(
-        'none',
-        [resolvedChild],
-        repoMap,
-        null,
-        new Set(),
-        undefined,
-        undefined,
-        undefined,
-        {},
-        map,
-        true
-      )
+  it('keeps a resolved child at the root when its parent is missing', () => {
+    const resolvedChild: ResolvedLineageWorktree = { ...child, lineage }
+    const rows = buildRows(
+      'none',
+      [resolvedChild],
+      repoMap,
+      null,
+      new Set(),
+      undefined,
+      undefined,
+      undefined,
+      {},
+      new Map([[child.id, resolvedChild]]),
+      true
+    )
 
-      expect(rows.find((row) => row.type === 'item')).toMatchObject({ depth: 0 })
-    }
-  )
+    expect(rows.find((row) => row.type === 'item')).toMatchObject({ depth: 0 })
+  })
 
   it.each([
     ['repo', { repoId: 'other-repo' }],

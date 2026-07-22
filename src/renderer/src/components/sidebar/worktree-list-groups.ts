@@ -43,6 +43,9 @@ import {
 } from '../../../../shared/execution-host'
 import { parseWslUncPath } from '../../../../shared/wsl-paths'
 import { isWindowsAbsolutePathLike } from '../../../../shared/cross-platform-path'
+import { getLineageRenderInfo } from './worktree-lineage-projection'
+
+export { getLineageRenderInfo } from './worktree-lineage-projection'
 
 export { branchName }
 
@@ -373,50 +376,6 @@ export function getLineageGroupKey(worktreeId: string): string {
   return `${LINEAGE_GROUP_PREFIX}${worktreeId}`
 }
 
-export type LineageRenderInfo =
-  | { state: 'none' }
-  | { state: 'valid'; lineage: WorktreeLineage; parent: Worktree }
-  | { state: 'missing'; lineage: WorktreeLineage }
-
-type WorktreeWithResolvedLineage = Worktree & { lineage?: WorktreeLineage | null }
-
-function getProjectedWorktreeLineage(
-  worktree: Worktree,
-  lineageById: Record<string, WorktreeLineage>
-): WorktreeLineage | null | undefined {
-  if (Object.prototype.hasOwnProperty.call(lineageById, worktree.id)) {
-    return lineageById[worktree.id]
-  }
-  return (worktree as WorktreeWithResolvedLineage).lineage
-}
-
-export function getLineageRenderInfo(
-  worktree: Worktree,
-  lineageById: Record<string, WorktreeLineage>,
-  worktreeMap: Map<string, Worktree>
-): LineageRenderInfo {
-  const lineage = getProjectedWorktreeLineage(worktree, lineageById)
-  if (!lineage) {
-    return { state: 'none' }
-  }
-  const parent = worktreeMap.get(lineage.parentWorktreeId)
-  if (
-    !parent ||
-    lineage.worktreeId !== worktree.id ||
-    worktree.repoId !== parent.repoId ||
-    (worktree.hostId !== undefined &&
-      parent.hostId !== undefined &&
-      worktree.hostId !== parent.hostId) ||
-    (worktree.projectId !== undefined &&
-      parent.projectId !== undefined &&
-      worktree.projectId !== parent.projectId) ||
-    worktree.instanceId !== lineage.worktreeInstanceId ||
-    parent.instanceId !== lineage.parentWorktreeInstanceId
-  ) {
-    return { state: 'missing', lineage }
-  }
-  return { state: 'valid', lineage, parent }
-}
 export function getPRGroupKey(
   worktree: Worktree,
   repoMap: Map<string, Repo>,

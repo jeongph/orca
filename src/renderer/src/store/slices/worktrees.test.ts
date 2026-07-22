@@ -5680,6 +5680,64 @@ describe('fetchAllWorktrees hydration-time purge (design §4.4)', () => {
     addedAt: 0
   }
 
+  it('preserves resolved inline legacy lineage when side-map hydration is absent', async () => {
+    const store = createTestStore()
+    const parent = makeWorktree({
+      id: 'repoA::/a/parent',
+      instanceId: 'parent-instance',
+      repoId: 'repoA',
+      path: '/a/parent'
+    })
+    const child = makeWorktree({
+      id: 'repoA::/a/child',
+      instanceId: 'child-instance',
+      repoId: 'repoA',
+      path: '/a/child'
+    })
+    const lineage = makeLineage({
+      worktreeId: child.id,
+      worktreeInstanceId: child.instanceId!,
+      parentWorktreeId: parent.id,
+      parentWorktreeInstanceId: parent.instanceId!
+    })
+    const resolvedParent = {
+      ...parent,
+      parentWorktreeId: null,
+      childWorktreeIds: [child.id],
+      lineage: null,
+      workspaceLineage: null
+    }
+    const resolvedChild = {
+      ...child,
+      parentWorktreeId: parent.id,
+      childWorktreeIds: [],
+      lineage,
+      workspaceLineage: null
+    }
+    mockApi.worktrees.listDetected.mockResolvedValueOnce(
+      makeDetectedResult('repoA', [resolvedParent, resolvedChild])
+    )
+    store.setState({
+      repos: [repoA],
+      hasHydratedWorktreePurge: true,
+      worktreeLineageById: {}
+    } as Partial<AppState>)
+
+    await store.getState().fetchAllWorktrees()
+
+    expect(store.getState().worktreeLineageById).toEqual({})
+    expect(store.getState().worktreesByRepo.repoA).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: child.id,
+          parentWorktreeId: parent.id,
+          lineage,
+          workspaceLineage: null
+        })
+      ])
+    )
+  })
+
   it('defers the purge when a sibling repo fetch fails (F1 regression)', async () => {
     const store = createTestStore()
     const wtA = makeWorktree({ id: 'repoA::/a/wt1', repoId: 'repoA', path: '/a/wt1' })

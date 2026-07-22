@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync } from 'node:fs'
 import { lstat, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
-import { join, win32 } from 'node:path'
+import { basename, join, win32 } from 'node:path'
 import { ipcMain } from 'electron'
 import type {
   FolderWorkspace,
@@ -24804,19 +24804,34 @@ describe('OrcaRuntimeService', () => {
     })
   })
 
-  it('emits only instance-validated lineage parents in mobile summaries', async () => {
+  it('emits only instance- and boundary-validated lineage parents in mobile summaries', async () => {
     // Regression: shipped mobile clients trust parentWorktreeId blindly, so worktree.ps must not emit stale same-path lineage.
-    const parentPath = '/tmp/worktree-parent'
-    const validChildPath = '/tmp/worktree-child-valid'
-    const staleChildPath = '/tmp/worktree-child-stale'
+    const parentPath = join(tmpdir(), 'worktree-parent')
+    const validChildPath = join(tmpdir(), 'worktree-child-valid')
+    const staleChildPath = join(tmpdir(), 'worktree-child-stale')
+    const crossHostChildPath = join(tmpdir(), 'worktree-child-cross-host')
     const parentId = `${TEST_REPO_ID}::${parentPath}`
     const validChildId = `${TEST_REPO_ID}::${validChildPath}`
     const staleChildId = `${TEST_REPO_ID}::${staleChildPath}`
+    const crossHostChildId = `${TEST_REPO_ID}::${crossHostChildPath}`
     const metaById: Record<string, WorktreeMeta> = {
-      [parentId]: makeWorktreeMeta({ instanceId: 'parent-instance' }),
-      [validChildId]: makeWorktreeMeta({ instanceId: 'child-instance' }),
+      [parentId]: makeWorktreeMeta({
+        instanceId: 'parent-instance',
+        hostId: 'local',
+        projectId: 'project-a'
+      }),
+      [validChildId]: makeWorktreeMeta({
+        instanceId: 'child-instance',
+        hostId: 'local',
+        projectId: 'project-a'
+      }),
       // The stale child path was reused by a replacement checkout.
-      [staleChildId]: makeWorktreeMeta({ instanceId: 'replacement-instance' })
+      [staleChildId]: makeWorktreeMeta({ instanceId: 'replacement-instance' }),
+      [crossHostChildId]: makeWorktreeMeta({
+        instanceId: 'cross-host-child-instance',
+        hostId: 'runtime:other-host',
+        projectId: 'project-a'
+      })
     }
     const makeLineage = (childId: string, worktreeInstanceId: string): WorktreeLineage => ({
       worktreeId: childId,
@@ -24829,7 +24844,8 @@ describe('OrcaRuntimeService', () => {
     })
     const lineageById: Record<string, WorktreeLineage> = {
       [validChildId]: makeLineage(validChildId, 'child-instance'),
-      [staleChildId]: makeLineage(staleChildId, 'old-child-instance')
+      [staleChildId]: makeLineage(staleChildId, 'old-child-instance'),
+      [crossHostChildId]: makeLineage(crossHostChildId, 'cross-host-child-instance')
     }
     const runtimeStore = {
       ...store,
@@ -24843,10 +24859,10 @@ describe('OrcaRuntimeService', () => {
       getWorktreeLineage: (worktreeId: string) => lineageById[worktreeId]
     }
     vi.mocked(listWorktrees).mockResolvedValue(
-      [parentPath, validChildPath, staleChildPath].map((path) => ({
+      [parentPath, validChildPath, staleChildPath, crossHostChildPath].map((path) => ({
         path,
         head: 'abc',
-        branch: `feature/${path.split('/').pop()}`,
+        branch: `feature/${basename(path)}`,
         isBare: false,
         isMainWorktree: false
       }))
@@ -24868,6 +24884,13 @@ describe('OrcaRuntimeService', () => {
     })
     expect(staleSummary?.lineageWorktreeInstanceId).toBeUndefined()
     expect(staleSummary?.parentWorktreeInstanceId).toBeUndefined()
+    const crossHostSummary = worktrees.find((worktree) => worktree.worktreeId === crossHostChildId)
+    expect(crossHostSummary).toMatchObject({
+      parentWorktreeId: null,
+      worktreeInstanceId: 'cross-host-child-instance'
+    })
+    expect(crossHostSummary?.lineageWorktreeInstanceId).toBeUndefined()
+    expect(crossHostSummary?.parentWorktreeInstanceId).toBeUndefined()
     expect(worktrees.find((worktree) => worktree.worktreeId === parentId)).toMatchObject({
       childWorktreeIds: [validChildId]
     })

@@ -6,6 +6,58 @@ export type WorktreeWithResolvedLineage<T extends Worktree = Worktree> = T & {
   lineage: WorktreeLineage | null
 }
 
+export function isValidResolvedWorktreeLineageEdge(
+  child: Worktree,
+  parent: Worktree,
+  lineage: WorktreeLineage
+): boolean {
+  return (
+    child.id !== parent.id &&
+    lineage.worktreeId === child.id &&
+    lineage.parentWorktreeId === parent.id &&
+    child.repoId === parent.repoId &&
+    (child.hostId === undefined || parent.hostId === undefined || child.hostId === parent.hostId) &&
+    (child.projectId === undefined ||
+      parent.projectId === undefined ||
+      child.projectId === parent.projectId) &&
+    child.instanceId === lineage.worktreeInstanceId &&
+    parent.instanceId === lineage.parentWorktreeInstanceId
+  )
+}
+
+function getCyclicLineageChildIds(
+  lineageByChildId: ReadonlyMap<string, WorktreeLineage>
+): Set<string> {
+  const processed = new Set<string>()
+  const cyclic = new Set<string>()
+
+  for (const childId of lineageByChildId.keys()) {
+    if (processed.has(childId)) {
+      continue
+    }
+    const path: string[] = []
+    const pathIndexById = new Map<string, number>()
+    let currentId: string | undefined = childId
+    while (currentId && lineageByChildId.has(currentId) && !processed.has(currentId)) {
+      const cycleStart = pathIndexById.get(currentId)
+      if (cycleStart !== undefined) {
+        for (let index = cycleStart; index < path.length; index += 1) {
+          cyclic.add(path[index])
+        }
+        break
+      }
+      pathIndexById.set(currentId, path.length)
+      path.push(currentId)
+      currentId = lineageByChildId.get(currentId)?.parentWorktreeId
+    }
+    for (const id of path) {
+      processed.add(id)
+    }
+  }
+
+  return cyclic
+}
+
 export function projectResolvedWorktreeLineage<T extends Worktree>(
   worktrees: readonly T[],
   lineageById: Readonly<Record<string, WorktreeLineage>>
@@ -21,15 +73,18 @@ export function projectResolvedWorktreeLineage<T extends Worktree>(
       continue
     }
     const parent = worktreeById.get(lineage.parentWorktreeId)
-    if (
-      lineage.worktreeId !== childId ||
-      !parent ||
-      child.instanceId !== lineage.worktreeInstanceId ||
-      parent.instanceId !== lineage.parentWorktreeInstanceId
-    ) {
+    if (!parent || !isValidResolvedWorktreeLineageEdge(child, parent, lineage)) {
       continue
     }
     validLineageByChildId.set(childId, lineage)
+  }
+
+  const cyclicChildIds = getCyclicLineageChildIds(validLineageByChildId)
+  for (const childId of cyclicChildIds) {
+    validLineageByChildId.delete(childId)
+  }
+
+  for (const [childId, lineage] of validLineageByChildId) {
     const children = childIdsByParentId.get(lineage.parentWorktreeId) ?? []
     children.push(childId)
     childIdsByParentId.set(lineage.parentWorktreeId, children)

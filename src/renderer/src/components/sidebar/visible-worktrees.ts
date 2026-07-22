@@ -11,6 +11,7 @@ import {
   type ExecutionHostId,
   type ExecutionHostScope
 } from '../../../../shared/execution-host'
+import { getLineageRenderInfo } from './worktree-lineage-projection'
 
 /**
  * Whether a worktree represents the repo's default-branch row that the
@@ -211,16 +212,11 @@ function addVisibleLineageAncestors(
       return
     }
     visiting.add(id)
-    const lineage = lineageById[id]
-    const parent = lineage ? worktreeById.get(lineage.parentWorktreeId) : undefined
-    if (
-      parent &&
-      worktree.instanceId === lineage.worktreeInstanceId &&
-      parent.instanceId === lineage.parentWorktreeInstanceId
-    ) {
+    const lineage = getLineageRenderInfo(worktree, lineageById, worktreeById)
+    if (lineage.state === 'valid') {
       // Why: sidebar lineage is structural. If a filtered child is visible,
       // its valid parent must be rendered too so the hierarchy remains legible.
-      addWithAncestors(parent.id)
+      addWithAncestors(lineage.parent.id)
     }
     visiting.delete(id)
     if (!included.has(id)) {
