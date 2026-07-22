@@ -6632,8 +6632,8 @@
           "fbb428db98": "選択済み:",
           "fac59213fc": "組み込みテーマを検索する",
           "search_terminal_themes": "terminal テーマを検索",
-          "cb330ef7f8": "{{value0}}の",
-          "c822571b2e": "「{{value0}}」に一致",
+          "cb330ef7f8": "/{{value0}}",
+          "c822571b2e": " 「{{value0}}」に一致",
           "3119c012a5": "文字列"
         },
         "SettingsSidebar": {
