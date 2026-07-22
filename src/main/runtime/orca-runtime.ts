@@ -16467,11 +16467,12 @@ export class OrcaRuntimeService {
     const store = this.requireStore()
     if (isFolderRepo(repo)) {
       const worktrees = listRuntimeFolderWorkspaces(store, repo)
+      const detected = worktrees.map((worktree) => this.toRuntimeDetectedWorktree(repo, worktree))
       return {
         repoId: repo.id,
         authoritative: true,
         source: 'git',
-        worktrees: worktrees.map((worktree) => this.toRuntimeDetectedWorktree(repo, worktree))
+        worktrees: projectResolvedWorktreeLineage(detected, store.getAllWorktreeLineage?.() ?? {})
       }
     }
     let scan: RuntimeWorktreeScanResult
