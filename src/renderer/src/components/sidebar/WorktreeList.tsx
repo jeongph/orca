@@ -122,7 +122,10 @@ import {
   setVisibleWorktreeIds,
   sidebarHasActiveFilters
 } from './visible-worktrees'
-import { getWorktreeLineageAncestors } from './worktree-lineage-projection'
+import {
+  getCyclicProjectedWorktreeLineageIds,
+  getWorktreeLineageAncestors
+} from './worktree-lineage-projection'
 import { getWorktreeIdsWithLiveAgent } from '@/lib/worktree-activity-state'
 import { getEmptyProjectPlaceholderRepoIds } from './empty-project-placeholder-repos'
 import {
@@ -250,7 +253,7 @@ import {
   suppressNewExternalWorktreeInbox,
   type NewExternalWorktreesInboxActionState
 } from './new-external-worktrees-inbox-actions'
-import { getEligibleWorktreeParents } from './worktree-parent-candidates'
+import { isEligibleWorktreeParent } from './worktree-parent-candidates'
 import {
   buildImportedWorktreesCardCandidates,
   getHiddenImportedWorktrees
@@ -1396,6 +1399,10 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
   const setRenamingWorktreeId = useAppStore((s) => s.setRenamingWorktreeId)
   const assignWorktreeParent = useAppStore((s) => s.assignWorktreeParent)
   const updateWorktreeLineage = useAppStore((s) => s.updateWorktreeLineage)
+  const cyclicLineageIds = useMemo(
+    () => getCyclicProjectedWorktreeLineageIds(worktreeLineageById, worktreeMap),
+    [worktreeLineageById, worktreeMap]
+  )
   const worktreeDragSessionRef = useRef<WorktreeSidebarDragSession | null>(null)
   const worktreePointerDragRef = useRef<WorktreePointerDrag | null>(null)
   const worktreePointerAutoscrollFrameIdRef = useRef<number | null>(null)
@@ -2686,17 +2693,22 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
         if (!child) {
           return false
         }
-        return getEligibleWorktreeParents({
-          child,
-          worktrees,
-          lineageById: worktreeLineageById,
-          worktreeMap,
-          repoMap
-        }).some((candidate) => candidate.id === parentId)
+        const candidateParent = worktreeMap.get(parentId)
+        return Boolean(
+          candidateParent &&
+          isEligibleWorktreeParent({
+            child,
+            candidateParent,
+            lineageById: worktreeLineageById,
+            worktreeMap,
+            repoMap,
+            cyclicLineageIds
+          })
+        )
       })
       return canAssignAll ? target : { ...target, lineageParentId: null }
     },
-    [repoMap, worktreeLineageById, worktreeMap, worktrees]
+    [cyclicLineageIds, repoMap, worktreeLineageById, worktreeMap]
   )
 
   const commitWorktreeLineageParentDrop = useCallback(
@@ -2733,7 +2745,9 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
       const ids = getReorderedWorktreeIdsToUnnest({
         draggedIds: args.draggedIds,
         sourceGroupIds: sourceGroup.worktreeIds,
-        lineageById: worktreeLineageById
+        lineageById: worktreeLineageById,
+        worktreeMap,
+        cyclicLineageIds
       })
       if (ids.length === 0) {
         return
@@ -2751,7 +2765,7 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
         }
       )
     },
-    [updateWorktreeLineage, worktreeDragGroups, worktreeLineageById]
+    [cyclicLineageIds, updateWorktreeLineage, worktreeDragGroups, worktreeLineageById, worktreeMap]
   )
 
   const flushWorktreePointerDrag = useCallback(() => {

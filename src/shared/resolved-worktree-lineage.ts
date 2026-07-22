@@ -6,6 +6,16 @@ export type WorktreeWithResolvedLineage<T extends Worktree = Worktree> = T & {
   lineage: WorktreeLineage | null
 }
 
+export function sharesResolvedWorktreeLineageBoundary(child: Worktree, parent: Worktree): boolean {
+  return (
+    child.repoId === parent.repoId &&
+    (child.hostId === undefined || parent.hostId === undefined || child.hostId === parent.hostId) &&
+    (child.projectId === undefined ||
+      parent.projectId === undefined ||
+      child.projectId === parent.projectId)
+  )
+}
+
 export function isValidResolvedWorktreeLineageEdge(
   child: Worktree,
   parent: Worktree,
@@ -15,11 +25,7 @@ export function isValidResolvedWorktreeLineageEdge(
     child.id !== parent.id &&
     lineage.worktreeId === child.id &&
     lineage.parentWorktreeId === parent.id &&
-    child.repoId === parent.repoId &&
-    (child.hostId === undefined || parent.hostId === undefined || child.hostId === parent.hostId) &&
-    (child.projectId === undefined ||
-      parent.projectId === undefined ||
-      child.projectId === parent.projectId) &&
+    sharesResolvedWorktreeLineageBoundary(child, parent) &&
     child.instanceId === lineage.worktreeInstanceId &&
     parent.instanceId === lineage.parentWorktreeInstanceId
   )

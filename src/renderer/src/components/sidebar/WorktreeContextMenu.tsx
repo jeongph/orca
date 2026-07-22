@@ -41,7 +41,11 @@ import { runSleepWorktrees } from './sleep-worktree-flow'
 import { activateAndRevealWorktree } from '@/lib/worktree-activation'
 import { tabHasLivePty } from '@/lib/tab-has-live-pty'
 import { VIRTUALIZED_SCROLL_ANCHOR_RECORD_EVENT } from '@/hooks/useVirtualizedScrollAnchor'
-import { getLineageRenderInfo, getProjectedWorktreeLineage } from './worktree-lineage-projection'
+import {
+  getCyclicProjectedWorktreeLineageIds,
+  getLineageRenderInfo,
+  getProjectedWorktreeLineage
+} from './worktree-lineage-projection'
 import { getWorkspaceStatus, getWorkspaceStatusVisualMeta } from './workspace-status'
 import { WorktreeOpenInSubMenu } from './WorktreeOpenInMenu'
 import { ProjectGroupNameDialog } from './ProjectGroupNameDialog'
@@ -82,6 +86,7 @@ const EMPTY_BROWSER_TABS_BY_WORKTREE: AppState['browserTabsByWorktree'] = {}
 const EMPTY_DELETE_STATE_BY_WORKTREE_ID: AppState['deleteStateByWorktreeId'] = {}
 const EMPTY_WORKTREE_LINEAGE_BY_ID: AppState['worktreeLineageById'] = {}
 const EMPTY_WORKSPACE_LINEAGE_BY_CHILD_KEY: AppState['workspaceLineageByChildKey'] = {}
+const EMPTY_CYCLIC_LINEAGE_IDS: ReadonlySet<string> = new Set()
 
 // Why: the gating decision for the menu-only store subscriptions. When the menu is
 // closed we MUST return the same `empty` reference every render so Zustand's Object.is
@@ -392,11 +397,18 @@ const WorktreeContextMenu = React.memo(function WorktreeContextMenu({
     worktreeLineageById,
     workspaceLineageByChildKey
   )
+  const cyclicLineageIds = useMemo(
+    () =>
+      menuOpen
+        ? getCyclicProjectedWorktreeLineageIds(worktreeLineageById, worktreeMap)
+        : EMPTY_CYCLIC_LINEAGE_IDS,
+    [menuOpen, worktreeLineageById, worktreeMap]
+  )
   // Why: path-derived worktree IDs can be reused. The menu must honor the same
   // instance check as grouped rows before offering navigation to a parent.
   const lineageInfo = useMemo(
-    () => getLineageRenderInfo(worktree, worktreeLineageById, worktreeMap),
-    [worktree, worktreeLineageById, worktreeMap]
+    () => getLineageRenderInfo(worktree, worktreeLineageById, worktreeMap, cyclicLineageIds),
+    [cyclicLineageIds, worktree, worktreeLineageById, worktreeMap]
   )
   const validParentWorktreeId = lineageInfo.state === 'valid' ? lineageInfo.parent.id : null
   const hasAnyContextLineage = activeContextWorktrees.some((item) =>
@@ -404,14 +416,17 @@ const WorktreeContextMenu = React.memo(function WorktreeContextMenu({
   )
   const eligibleParentCount = useMemo(
     () =>
-      getEligibleWorktreeParents({
-        child: worktree,
-        worktrees: allWorktrees,
-        lineageById: worktreeLineageById,
-        worktreeMap,
-        repoMap
-      }).length,
-    [allWorktrees, repoMap, worktree, worktreeLineageById, worktreeMap]
+      menuOpen
+        ? getEligibleWorktreeParents({
+            child: worktree,
+            worktrees: allWorktrees,
+            lineageById: worktreeLineageById,
+            worktreeMap,
+            repoMap,
+            cyclicLineageIds
+          }).length
+        : 0,
+    [allWorktrees, cyclicLineageIds, menuOpen, repoMap, worktree, worktreeLineageById, worktreeMap]
   )
 
   const setMenuOpenState = useCallback(

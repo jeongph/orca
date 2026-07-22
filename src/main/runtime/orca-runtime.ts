@@ -301,7 +301,10 @@ import {
   parseWorkspaceKey,
   worktreeWorkspaceKey
 } from '../../shared/workspace-scope'
-import { projectResolvedWorktreeLineage } from '../../shared/resolved-worktree-lineage'
+import {
+  projectResolvedWorktreeLineage,
+  sharesResolvedWorktreeLineageBoundary
+} from '../../shared/resolved-worktree-lineage'
 import { folderWorkspaceToWorktree } from '../../shared/folder-workspace-worktree'
 import type {
   FolderWorkspacePathStatus,
@@ -22643,6 +22646,12 @@ export class OrcaRuntimeService {
     const parentWorktreeId = parent.id
     if (childWorktreeId === parentWorktreeId) {
       throw new RuntimeLineageError('LINEAGE_PARENT_CYCLE', 'A worktree cannot parent itself.')
+    }
+    if (!sharesResolvedWorktreeLineageBoundary(child, parent)) {
+      throw new RuntimeLineageError(
+        'LINEAGE_PARENT_CONTEXT_CONFLICT',
+        'Parent worktree must belong to the same repository, execution host, and project.'
+      )
     }
     const instanceByWorktreeId = new Map(
       this.resolvedWorktreeCache?.worktrees.map((worktree) => [

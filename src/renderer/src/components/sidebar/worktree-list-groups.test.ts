@@ -3760,7 +3760,8 @@ describe('buildRows workspace lineage nesting', () => {
       new Map([
         [parent.id, parent],
         [child.id, child]
-      ])
+      ]),
+      new Set()
     )
 
     expect(info).toMatchObject({ state: 'missing' })
