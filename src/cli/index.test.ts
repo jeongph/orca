@@ -3433,17 +3433,11 @@ describe('orca cli worktree awareness', () => {
     expect(logSpy).toHaveBeenCalledWith('Sent 2 messages to 2 recipients')
   })
 
-  it('passes all reset scope explicitly for no-flag orchestration reset', async () => {
-    callMock.mockResolvedValueOnce(okFixture('req_reset', { reset: 'all' }))
-    vi.spyOn(console, 'log').mockImplementation(() => {})
-
+  it('rejects no-flag orchestration reset before calling the runtime', async () => {
     await main(['orchestration', 'reset'], '/tmp/repo')
 
-    expect(callMock).toHaveBeenCalledWith('orchestration.reset', {
-      all: true,
-      tasks: undefined,
-      messages: undefined
-    })
+    expect(callMock).not.toHaveBeenCalled()
+    expect(process.exitCode).toBe(1)
   })
 
   it.each([
@@ -3461,16 +3455,6 @@ describe('orca cli worktree awareness', () => {
       args: ['orchestration', 'reset', '--messages'],
       params: { all: undefined, tasks: undefined, messages: true },
       reset: 'messages'
-    },
-    {
-      args: ['orchestration', 'reset', '--tasks', '--messages'],
-      params: { all: undefined, tasks: true, messages: true },
-      reset: 'tasks'
-    },
-    {
-      args: ['orchestration', 'reset', '--all', '--tasks'],
-      params: { all: true, tasks: true, messages: undefined },
-      reset: 'all'
     }
   ])('passes explicit reset flags through for $args', async ({ args, params, reset }) => {
     callMock.mockResolvedValueOnce(okFixture('req_reset', { reset }))
@@ -3479,6 +3463,16 @@ describe('orca cli worktree awareness', () => {
     await main(args, '/tmp/repo')
 
     expect(callMock).toHaveBeenCalledWith('orchestration.reset', params)
+  })
+
+  it.each([
+    ['orchestration', 'reset', '--tasks', '--messages'],
+    ['orchestration', 'reset', '--all', '--tasks']
+  ])('rejects conflicting reset scopes for $args', async (...args) => {
+    await main(args, '/tmp/repo')
+
+    expect(callMock).not.toHaveBeenCalled()
+    expect(process.exitCode).toBe(1)
   })
 
   it('rejects unknown task-update status with an enum-aware error', async () => {
