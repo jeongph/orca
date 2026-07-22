@@ -157,6 +157,8 @@ type CreateMainWindowOptions = {
   onBeforeReload?: (options: { ignoreCache: boolean; webContentsId: number }) => void
   /** Marks the in-place recovery reload so did-finish-load's PTY orphan sweep spares live sessions until restore re-attaches (#5787). */
   onBeforeRecoveryReload?: (webContentsId: number) => void
+  /** Run this window's top-level renderer unsandboxed (build-scoped #9891 fallback after repeated launch-time renderer STATUS_BREAKPOINT crashes); webview guests stay sandbox:true via will-attach-webview. */
+  disableRendererSandbox?: boolean
 }
 
 export function loadMainWindow(mainWindow: BrowserWindow): void {
@@ -247,7 +249,8 @@ export function createMainWindow(
     ...platformBlurOptions,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: true,
+      // Why: keep the renderer sandboxed by default; only the build-scoped #9891 fallback unsandboxes this one window after repeated launch-time STATUS_BREAKPOINT crashes. Webview guests stay sandbox:true via will-attach-webview.
+      sandbox: opts?.disableRendererSandbox !== true,
       webviewTag: true
     }
   })
