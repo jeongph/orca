@@ -280,6 +280,25 @@ export type RuntimeMobileSessionTabMoveResult = {
   moved: true
 }
 
+export type RuntimeMobileSessionTabCloseResult = {
+  closed: true
+  refused?: true
+  refusalReason?:
+    | 'missing-intent'
+    | 'stale-publication'
+    | 'stale-terminal'
+    | 'live-host-pty'
+    | 'unknown-liveness'
+    | 'retirement-owner'
+  // Why: only a republished snapshot can restore a live mirror; dead-leaf refusals intentionally omit this marker.
+  snapshotRepublished?: true
+}
+
+// Why: lets the host tell a user's close from a client-lifecycle echo
+// ('pty-exit'/'cleanup') and adjudicate against its own PTY liveness.
+// Absent on legacy clients, where the existing close endpoint remains user intent.
+export type RuntimeSessionTabCloseReason = 'user' | 'pty-exit' | 'cleanup'
+
 export type RuntimeMobileSessionTabsSnapshot = {
   worktree: string
   publicationEpoch: string
@@ -544,6 +563,8 @@ export type RuntimeTerminalCreate = {
   title: string | null
   surface?: 'background' | 'visible'
   warning?: string
+  /** Present only for the structured host-authority resume path. */
+  agentSessionDisposition?: 'created' | 'adopted'
 }
 
 export type RuntimeTerminalSplit = {

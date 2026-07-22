@@ -2429,13 +2429,13 @@ export function useIpcEvents(): void {
           return
         }
         void (async () => {
-          if (
-            await createWebRuntimeSessionTerminal({
-              worktreeId,
-              environmentId: getWorktreeRuntimeEnvironmentId(worktreeId),
-              activate: true
-            })
-          ) {
+          const environmentId = getWorktreeRuntimeEnvironmentId(worktreeId)
+          const outcome = await createWebRuntimeSessionTerminal({
+            worktreeId,
+            environmentId,
+            activate: true
+          })
+          if (outcome.status === 'created' || isWebRuntimeSessionActive(environmentId)) {
             return
           }
           const newTab = store.createTab(worktreeId)
@@ -2487,7 +2487,8 @@ export function useIpcEvents(): void {
               void closeWebRuntimeSessionTab({
                 worktreeId,
                 tabId,
-                environmentId
+                environmentId,
+                reason: 'user'
               })
               return
             }
