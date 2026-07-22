@@ -1668,6 +1668,42 @@ describe('worktree lineage state', () => {
     expect(store.getState().sortEpoch).toBe(4)
   })
 
+  it('clears inline local lineage immediately when an inline-only child is unnested', async () => {
+    const store = createTestStore()
+    const lineage = makeLineage()
+    const parent = {
+      ...makeWorktree({
+        id: lineage.parentWorktreeId,
+        instanceId: lineage.parentWorktreeInstanceId,
+        repoId: 'repo1'
+      }),
+      childWorktreeIds: [lineage.worktreeId],
+      lineage: null
+    }
+    const child = {
+      ...makeWorktree({
+        id: lineage.worktreeId,
+        instanceId: lineage.worktreeInstanceId,
+        repoId: 'repo1'
+      }),
+      parentWorktreeId: lineage.parentWorktreeId,
+      childWorktreeIds: [],
+      lineage
+    }
+    mockApi.worktrees.updateLineage.mockResolvedValue(null)
+    store.setState({
+      worktreesByRepo: { repo1: [parent, child] },
+      worktreeLineageById: {}
+    } as Partial<AppState>)
+
+    await store.getState().updateWorktreeLineage(child.id, { noParent: true })
+
+    expect(store.getState().worktreesByRepo.repo1).toMatchObject([
+      { id: parent.id, childWorktreeIds: [] },
+      { id: child.id, parentWorktreeId: null, lineage: null }
+    ])
+  })
+
   it('syncs workspace lineage when a child is manually reparented', async () => {
     const store = createTestStore()
     const lineage = makeLineage({

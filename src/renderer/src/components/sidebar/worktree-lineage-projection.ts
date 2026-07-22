@@ -1,4 +1,7 @@
-import { isValidResolvedWorktreeLineageEdge } from '../../../../shared/resolved-worktree-lineage'
+import {
+  getCyclicWorktreeLineageChildIds,
+  isValidResolvedWorktreeLineageEdge
+} from '../../../../shared/resolved-worktree-lineage'
 import type { Worktree, WorktreeLineage } from '../../../../shared/types'
 
 export type LineageRenderInfo =
@@ -18,18 +21,64 @@ export function getProjectedWorktreeLineage(
   return (worktree as WorktreeWithResolvedLineage).lineage
 }
 
+export function getCyclicProjectedWorktreeLineageIds(
+  lineageById: Readonly<Record<string, WorktreeLineage>>,
+  worktreeMap: ReadonlyMap<string, Worktree>
+): Set<string> {
+  const validLineageByChildId = new Map<string, WorktreeLineage>()
+  for (const worktree of worktreeMap.values()) {
+    const lineage = getProjectedWorktreeLineage(worktree, lineageById)
+    if (!lineage) {
+      continue
+    }
+    const parent = worktreeMap.get(lineage.parentWorktreeId)
+    if (parent && isValidResolvedWorktreeLineageEdge(worktree, parent, lineage)) {
+      validLineageByChildId.set(worktree.id, lineage)
+    }
+  }
+  return getCyclicWorktreeLineageChildIds(validLineageByChildId)
+}
+
 export function getLineageRenderInfo(
   worktree: Worktree,
   lineageById: Readonly<Record<string, WorktreeLineage>>,
-  worktreeMap: ReadonlyMap<string, Worktree>
+  worktreeMap: ReadonlyMap<string, Worktree>,
+  precomputedCyclicLineageIds?: ReadonlySet<string>
 ): LineageRenderInfo {
   const lineage = getProjectedWorktreeLineage(worktree, lineageById)
   if (!lineage) {
     return { state: 'none' }
   }
+  const cyclicLineageIds =
+    precomputedCyclicLineageIds ?? getCyclicProjectedWorktreeLineageIds(lineageById, worktreeMap)
   const parent = worktreeMap.get(lineage.parentWorktreeId)
-  if (!parent || !isValidResolvedWorktreeLineageEdge(worktree, parent, lineage)) {
+  if (
+    cyclicLineageIds.has(worktree.id) ||
+    !parent ||
+    !isValidResolvedWorktreeLineageEdge(worktree, parent, lineage)
+  ) {
     return { state: 'missing', lineage }
   }
   return { state: 'valid', lineage, parent }
+}
+
+export function getWorktreeLineageAncestors(
+  worktree: Worktree,
+  lineageById: Readonly<Record<string, WorktreeLineage>>,
+  worktreeMap: ReadonlyMap<string, Worktree>
+): Worktree[] {
+  const cyclicLineageIds = getCyclicProjectedWorktreeLineageIds(lineageById, worktreeMap)
+  const ancestors: Worktree[] = []
+  const seen = new Set<string>()
+  let current: Worktree | undefined = worktree
+  while (current && !seen.has(current.id)) {
+    seen.add(current.id)
+    const lineage = getLineageRenderInfo(current, lineageById, worktreeMap, cyclicLineageIds)
+    if (lineage.state !== 'valid') {
+      break
+    }
+    ancestors.push(lineage.parent)
+    current = lineage.parent
+  }
+  return ancestors
 }

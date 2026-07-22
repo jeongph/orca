@@ -497,6 +497,68 @@ describe('computeVisibleWorktreeIds', () => {
     expect(result).toEqual([parent.id, child.id])
   })
 
+  it('keeps inline parents out of non-nested board results across parent filters', () => {
+    const child = makeWorktree('child')
+    const run = (
+      parent: ReturnType<typeof makeWorktree>,
+      options: Partial<VisibleOptions>
+    ): string[] => {
+      const resolvedChild = { ...child, lineage: makeWorktreeLineage(child, parent) }
+      return computeVisibleWorktreeIds(
+        { repo1: [parent, resolvedChild] },
+        [parent.id, child.id],
+        visibleOptions({ ...options, injectLineageAncestors: false })
+      )
+    }
+
+    const sleepingParent = makeWorktree('sleeping-parent')
+    expect(
+      run(sleepingParent, {
+        showSleepingWorkspaces: false,
+        tabsByWorktree: { [child.id]: [makeTab('t-child', child.id, 'p-child')] },
+        ptyIdsByTabId: { 't-child': ['p-child'] }
+      })
+    ).toEqual([child.id])
+
+    const defaultBranchParent = makeWorktree('default-parent')
+    defaultBranchParent.isMainWorktree = true
+    expect(run(defaultBranchParent, { hideDefaultBranchWorkspace: true })).toEqual([child.id])
+
+    const automationParent = makeWorktree('automation-parent')
+    automationParent.automationProvenance = {
+      kind: 'created-by-automation',
+      automationId: 'automation-1',
+      automationNameSnapshot: 'Review',
+      automationRunId: 'run-1',
+      automationRunTitleSnapshot: 'Review run',
+      createdAt: 1,
+      executionTargetType: 'local',
+      executionTargetId: 'local',
+      projectId: 'repo1',
+      repoId: 'repo1',
+      hostId: 'local'
+    }
+    expect(run(automationParent, { hideAutomationGeneratedWorkspaces: true })).toEqual([child.id])
+  })
+
+  it('includes inline lineage ancestors when send-target mode forces a filtered child visible', () => {
+    const parent = makeWorktree('parent')
+    const child = makeWorktree('child')
+    const lineage = makeWorktreeLineage(child, parent)
+    const resolvedChild = { ...child, lineage }
+
+    const result = computeVisibleWorktreeIds(
+      { repo1: [parent, resolvedChild] },
+      [parent.id, child.id],
+      visibleOptions({
+        showSleepingWorkspaces: false,
+        forcedVisibleWorktreeIds: [child.id]
+      })
+    )
+
+    expect(result).toEqual([parent.id, child.id])
+  })
+
   it('keeps the hydrated side-map authoritative over disagreeing inline lineage', () => {
     const inlineParent = makeWorktree('inline-parent')
     const hydratedParent = makeWorktree('hydrated-parent')

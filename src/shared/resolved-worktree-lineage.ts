@@ -25,7 +25,7 @@ export function isValidResolvedWorktreeLineageEdge(
   )
 }
 
-function getCyclicLineageChildIds(
+export function getCyclicWorktreeLineageChildIds(
   lineageByChildId: ReadonlyMap<string, WorktreeLineage>
 ): Set<string> {
   const processed = new Set<string>()
@@ -79,7 +79,7 @@ export function projectResolvedWorktreeLineage<T extends Worktree>(
     validLineageByChildId.set(childId, lineage)
   }
 
-  const cyclicChildIds = getCyclicLineageChildIds(validLineageByChildId)
+  const cyclicChildIds = getCyclicWorktreeLineageChildIds(validLineageByChildId)
   for (const childId of cyclicChildIds) {
     validLineageByChildId.delete(childId)
   }

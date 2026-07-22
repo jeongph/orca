@@ -19,6 +19,7 @@ import {
   REPO_HEADER_ACTION_BUTTON_CLASS,
   REPO_HEADER_ACTION_REVEAL_CLASS
 } from './repo-header-action-button-class'
+import { getWorktreeLineageAncestors } from './worktree-lineage-projection'
 import type {
   DetectedWorktree,
   Project,
@@ -3497,6 +3498,60 @@ describe('buildRows workspace lineage nesting', () => {
     )
 
     expect(rows.filter((row) => row.type === 'item').map((row) => row.depth)).toEqual([0, 0])
+  })
+
+  it('keeps mixed cyclic lineage participants visible as roots', () => {
+    const parentLineage: WorktreeLineage = {
+      ...lineage,
+      worktreeId: parent.id,
+      worktreeInstanceId: parent.instanceId!,
+      parentWorktreeId: child.id,
+      parentWorktreeInstanceId: child.instanceId!
+    }
+    const rows = buildRows(
+      'none',
+      [grandchild, child, parent],
+      repoMap,
+      null,
+      new Set(),
+      undefined,
+      undefined,
+      undefined,
+      { [child.id]: lineage, [parent.id]: parentLineage },
+      new Map([
+        [parent.id, parent],
+        [child.id, child],
+        [grandchild.id, grandchild]
+      ]),
+      true
+    )
+
+    expect(
+      rows.filter((row) => row.type === 'item').map((row) => [row.worktree.id, row.depth])
+    ).toEqual([
+      [grandchild.id, 0],
+      [child.id, 0],
+      [parent.id, 0]
+    ])
+  })
+
+  it('resolves inline-only ancestor chains for reveal and temporary picker expansion', () => {
+    const resolvedChild: ResolvedLineageWorktree = { ...child, lineage }
+    const resolvedGrandchild: ResolvedLineageWorktree = {
+      ...grandchild,
+      lineage: grandchildLineage
+    }
+    const worktreeMap = new Map<string, Worktree>([
+      [parent.id, parent],
+      [resolvedChild.id, resolvedChild],
+      [resolvedGrandchild.id, resolvedGrandchild]
+    ])
+
+    expect(
+      getWorktreeLineageAncestors(resolvedGrandchild, {}, worktreeMap).map(
+        (worktree) => worktree.id
+      )
+    ).toEqual([child.id, parent.id])
   })
 
   it('keeps a resolved child at the root when its parent is missing', () => {

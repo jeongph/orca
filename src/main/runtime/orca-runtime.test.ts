@@ -27590,8 +27590,8 @@ describe('OrcaRuntimeService', () => {
   })
 
   it('hydrates runtime detected lists with instance-validated legacy lineage', async () => {
-    const parentPath = '/tmp/worktree-parent'
-    const childPath = '/tmp/worktree-child'
+    const parentPath = join(tmpdir(), 'worktree-parent')
+    const childPath = join(tmpdir(), 'worktree-child')
     const parentId = `${TEST_REPO_ID}::${parentPath}`
     const childId = `${TEST_REPO_ID}::${childPath}`
     const metaById: Record<string, WorktreeMeta> = {

@@ -122,6 +122,7 @@ import {
   setVisibleWorktreeIds,
   sidebarHasActiveFilters
 } from './visible-worktrees'
+import { getWorktreeLineageAncestors } from './worktree-lineage-projection'
 import { getWorktreeIdsWithLiveAgent } from '@/lib/worktree-activity-state'
 import { getEmptyProjectPlaceholderRepoIds } from './empty-project-placeholder-repos'
 import {
@@ -2085,25 +2086,15 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
             toggleGroup(hostGroupKey)
           }
 
-          const seen = new Set<string>()
-          let current: Worktree | undefined = targetWorktree
-          while (current && !seen.has(current.id)) {
-            seen.add(current.id)
-            const lineage = worktreeLineageById[current.id]
-            const parent = lineage ? worktreeMap.get(lineage.parentWorktreeId) : undefined
-            if (
-              !lineage ||
-              !parent ||
-              current.instanceId !== lineage.worktreeInstanceId ||
-              parent.instanceId !== lineage.parentWorktreeInstanceId
-            ) {
-              break
-            }
+          for (const parent of getWorktreeLineageAncestors(
+            targetWorktree,
+            worktreeLineageById,
+            worktreeMap
+          )) {
             const lineageGroupKey = getLineageGroupKey(parent.id)
             if (collapsedGroups.has(lineageGroupKey)) {
               toggleGroup(lineageGroupKey)
             }
-            current = parent
           }
 
           const groupKeys =
@@ -5496,16 +5487,9 @@ const WorktreeList = React.memo(function WorktreeList({
       workspaceHostScope,
       visibleWorkspaceHostIds,
       defaultHostId: getSettingsFocusedExecutionHostId(settings),
-      worktreeLineageById
+      worktreeLineageById,
+      forcedVisibleWorktreeIds: agentSendTargetWorktreeId ? [agentSendTargetWorktreeId] : undefined
     })
-    if (
-      agentSendTargetWorktreeId &&
-      !ids.includes(agentSendTargetWorktreeId) &&
-      worktreeMap.has(agentSendTargetWorktreeId)
-    ) {
-      // Why: send-target mode is a temporary picker; surface the target card without rewriting the user's filters.
-      ids.push(agentSendTargetWorktreeId)
-    }
     return ids.map((id) => worktreeMap.get(id)).filter((w): w is Worktree => w != null)
   }, [
     agentSendTargetWorktreeId,
@@ -5573,22 +5557,12 @@ const WorktreeList = React.memo(function WorktreeList({
       }
     }
 
-    const seen = new Set<string>()
-    let current: Worktree | undefined = targetWorktree
-    while (current && !seen.has(current.id)) {
-      seen.add(current.id)
-      const lineage = worktreeLineageById[current.id]
-      const parent = lineage ? worktreeMap.get(lineage.parentWorktreeId) : undefined
-      if (
-        !lineage ||
-        !parent ||
-        current.instanceId !== lineage.worktreeInstanceId ||
-        parent.instanceId !== lineage.parentWorktreeInstanceId
-      ) {
-        break
-      }
+    for (const parent of getWorktreeLineageAncestors(
+      targetWorktree,
+      worktreeLineageById,
+      worktreeMap
+    )) {
       next.delete(getLineageGroupKey(parent.id))
-      current = parent
     }
     return next
   }, [
