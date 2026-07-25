@@ -6,15 +6,7 @@ function sizeToContent(textarea: HTMLTextAreaElement): void {
   textarea.style.height = `${textarea.scrollHeight}px`
 }
 
-/**
- * Keeps a textarea's height matched to its content.
- *
- * Why: an `onInput` handler only covers text the user types — a value written from
- * React state (prefilling a note from a linked PR, restoring a draft) fires no input
- * event, so the field would keep its `rows` height and clip everything below it. Pair
- * with a `max-h-*` plus a scrollable overflow so long content clamps instead of growing
- * without bound.
- */
+/** Why: `onInput` misses values React writes from state, so a prefill would keep the `rows` height. */
 export function useAutoSizedTextarea(value: string): (node: HTMLTextAreaElement | null) => void {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
