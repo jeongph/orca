@@ -15,7 +15,11 @@ export {
   type SafeFitContinuationHandle
 } from './pane-fit'
 export { captureScrollState, restoreScrollState } from './pane-scroll'
-export { equalizePaneSplitSizes, findPaneChildren } from './pane-tree-equalization'
+export {
+  arePaneSplitSizesEqualized,
+  equalizePaneSplitSizes,
+  findPaneChildren
+} from './pane-tree-equalization'
 
 // ---------------------------------------------------------------------------
 // Split-tree manipulation: detach, insert, promote sibling

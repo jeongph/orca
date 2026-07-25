@@ -8,7 +8,9 @@ import type {
 import type { DragReorderCallbacks } from './pane-drag-reorder'
 import { updateMultiPaneState } from './pane-drag-reorder'
 import {
+  arePaneSplitSizesEqualized,
   captureScrollState,
+  equalizePaneSplitSizes,
   findPaneChildren,
   promoteSibling,
   removeDividers,
@@ -64,8 +66,12 @@ export function splitManagedPane(args: SplitManagedPaneArgs): ManagedPane | null
   const divider = args.createDivider(isVertical)
 
   const movedPaneStates = prepareMovedPanesForSplit(existingContainer, existing, args.panes)
+  const equalizeAfterSplit = shouldEqualizeAfterSplit(args)
 
   wrapInSplit(existingContainer, newPane.container, isVertical, divider, args.opts)
+  if (equalizeAfterSplit) {
+    equalizePaneSplitSizes(getLayoutRoot(args.root))
+  }
   args.setActivePaneId(newPane.id)
   openSplitPane(args, newPane, args.opts?.cwd)
 
@@ -80,6 +86,23 @@ export function splitManagedPane(args: SplitManagedPaneArgs): ManagedPane | null
   }
 
   return toPublicPane(newPane)
+}
+
+function getLayoutRoot(root: HTMLElement): HTMLElement | null {
+  // Why: duck-typed instead of `instanceof HTMLElement` so this stays callable
+  // where no DOM global exists; pane trees only ever hold HTML elements.
+  const first = root.firstElementChild
+  return first && 'style' in first ? (first as HTMLElement) : null
+}
+
+// Why: wrapInSplit nests the new split inside the old one, so a third pane
+// would land at 50/25/25. Re-weight the whole tree unless the sizes are no
+// longer the caller's to choose — a dragged divider or a replayed ratio.
+function shouldEqualizeAfterSplit(args: SplitManagedPaneArgs): boolean {
+  if (args.opts?.preserveSiblingSizes || args.opts?.ratio !== undefined) {
+    return false
+  }
+  return arePaneSplitSizesEqualized(getLayoutRoot(args.root))
 }
 
 function prepareMovedPanesForSplit(
