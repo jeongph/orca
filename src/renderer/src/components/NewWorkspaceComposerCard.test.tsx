@@ -196,69 +196,80 @@ function renderCard(
   const container = document.createElement('div')
   document.body.appendChild(container)
   const root = createRoot(container)
-  act(() => {
-    root.render(
-      <NewWorkspaceComposerCard
-        quickAgent={null}
-        onQuickAgentChange={() => {}}
-        eligibleRepos={[]}
-        repoId="repo-a"
-        projectOptions={projectOptions}
-        selectedProjectId="project-group:platform"
-        selectedRepoIsGit
-        onRepoChange={() => {}}
-        onProjectChange={() => {}}
-        primaryActionLabel="Create workspace"
-        name=""
-        onNameValueChange={() => {}}
-        onSmartGitHubItemSelect={() => {}}
-        onSmartGitLabItemSelect={() => {}}
-        onSmartBranchSelect={() => {}}
-        onSmartLinearIssueSelect={() => {}}
-        smartNameSelection={null}
-        onClearSmartNameSelection={() => {}}
-        canReuseSelectedBranch={false}
-        reuseSelectedBranch={false}
-        onReuseSelectedBranchChange={() => {}}
-        branchNameOverride=""
-        onBranchNameOverrideChange={() => {}}
-        forkPushWarning={null}
-        detectedAgentIds={null}
-        onOpenAgentSettings={() => {}}
-        advancedOpen={false}
-        onToggleAdvanced={() => {}}
-        createDisabled={false}
-        projectError={null}
-        creating={false}
-        onCreate={() => {}}
-        note=""
-        onNoteChange={() => {}}
-        setupConfig={null}
-        requiresExplicitSetupChoice={false}
-        setupDecision={null}
-        onSetupDecisionChange={() => {}}
-        setupAgentStartupPolicy="start-immediately"
-        onSetupAgentStartupPolicyChange={() => {}}
-        shouldWaitForSetupCheck={false}
-        resolvedSetupDecision={null}
-        createError={null}
-        selectedRepoConnectionId={null}
-        selectedRepoSshStatus={null}
-        selectedRepoRequiresConnection={false}
-        selectedRepoConnectInProgress={false}
-        onConnectSelectedRepo={async () => {}}
-        canUseSparseCheckout={false}
-        sparsePresets={[]}
-        sparseSelectedPresetId={null}
-        onSparseSelectPreset={() => {}}
-        branchesEnabled={false}
-        setupControlsEnabled={false}
-        sparseControlsEnabled={false}
-        {...overrides}
-      />
-    )
-  })
-  return { container, root }
+  const render = (
+    nextOverrides: Partial<React.ComponentProps<typeof NewWorkspaceComposerCard>>
+  ): void => {
+    act(() => {
+      root.render(cardElement(nextOverrides))
+    })
+  }
+  render(overrides)
+  return { container, root, rerender: render }
+}
+
+function cardElement(
+  overrides: Partial<React.ComponentProps<typeof NewWorkspaceComposerCard>>
+): React.JSX.Element {
+  return (
+    <NewWorkspaceComposerCard
+      quickAgent={null}
+      onQuickAgentChange={() => {}}
+      eligibleRepos={[]}
+      repoId="repo-a"
+      projectOptions={projectOptions}
+      selectedProjectId="project-group:platform"
+      selectedRepoIsGit
+      onRepoChange={() => {}}
+      onProjectChange={() => {}}
+      primaryActionLabel="Create workspace"
+      name=""
+      onNameValueChange={() => {}}
+      onSmartGitHubItemSelect={() => {}}
+      onSmartGitLabItemSelect={() => {}}
+      onSmartBranchSelect={() => {}}
+      onSmartLinearIssueSelect={() => {}}
+      smartNameSelection={null}
+      onClearSmartNameSelection={() => {}}
+      canReuseSelectedBranch={false}
+      reuseSelectedBranch={false}
+      onReuseSelectedBranchChange={() => {}}
+      branchNameOverride=""
+      onBranchNameOverrideChange={() => {}}
+      forkPushWarning={null}
+      detectedAgentIds={null}
+      onOpenAgentSettings={() => {}}
+      advancedOpen={false}
+      onToggleAdvanced={() => {}}
+      createDisabled={false}
+      projectError={null}
+      creating={false}
+      onCreate={() => {}}
+      note=""
+      onNoteChange={() => {}}
+      setupConfig={null}
+      requiresExplicitSetupChoice={false}
+      setupDecision={null}
+      onSetupDecisionChange={() => {}}
+      setupAgentStartupPolicy="start-immediately"
+      onSetupAgentStartupPolicyChange={() => {}}
+      shouldWaitForSetupCheck={false}
+      resolvedSetupDecision={null}
+      createError={null}
+      selectedRepoConnectionId={null}
+      selectedRepoSshStatus={null}
+      selectedRepoRequiresConnection={false}
+      selectedRepoConnectInProgress={false}
+      onConnectSelectedRepo={async () => {}}
+      canUseSparseCheckout={false}
+      sparsePresets={[]}
+      sparseSelectedPresetId={null}
+      onSparseSelectPreset={() => {}}
+      branchesEnabled={false}
+      setupControlsEnabled={false}
+      sparseControlsEnabled={false}
+      {...overrides}
+    />
+  )
 }
 
 function findInputByLabel(container: HTMLElement, labelText: string): HTMLInputElement | null {
@@ -853,5 +864,64 @@ describe('NewWorkspaceComposerCard folder task source mode', () => {
 
     expect(hostChanges).toEqual(['setup-builder'])
     expect(recipeChanges).toEqual([null])
+  })
+})
+
+describe('NewWorkspaceComposerCard note field', () => {
+  const originalScrollHeight = Object.getOwnPropertyDescriptor(
+    HTMLElement.prototype,
+    'scrollHeight'
+  )
+
+  beforeEach(() => {
+    // happy-dom has no layout, so every scrollHeight is 0; stand in a wrapped-content height.
+    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+      configurable: true,
+      get(this: HTMLElement) {
+        if (this.tagName !== 'TEXTAREA') {
+          return 0
+        }
+        return (this as HTMLTextAreaElement).value ? 76 : 34
+      }
+    })
+  })
+
+  afterEach(() => {
+    act(() => current?.root.unmount())
+    current?.container.remove()
+    current = null
+    if (originalScrollHeight) {
+      Object.defineProperty(HTMLElement.prototype, 'scrollHeight', originalScrollHeight)
+    }
+  })
+
+  it('sizes the note box to a note prefilled from a linked PR', () => {
+    current = renderCard({
+      advancedOpen: true,
+      note: 'PR #10555 — fix(sidebar): keep Cmd+Shift+Arrow cycling in place for folder workspaces'
+    })
+
+    const textarea = current.container.querySelector('textarea')
+    expect(textarea?.style.height).toBe('76px')
+  })
+
+  // The reported bug: resolving the linked PR sets the note from outside the textarea, so no
+  // input event fires and the box stayed one row tall with its overflow unreachable.
+  it('regrows when the prefilled note arrives after mount', () => {
+    const card = renderCard({ advancedOpen: true, note: '' })
+    current = card
+    expect(card.container.querySelector('textarea')?.style.height).toBe('34px')
+
+    card.rerender({ advancedOpen: true, note: 'PR #10555 — fix(sidebar): keep cycling' })
+    expect(card.container.querySelector('textarea')?.style.height).toBe('76px')
+  })
+
+  it('scrolls instead of clipping once the note passes the max height', () => {
+    current = renderCard({ advancedOpen: true, note: 'a long note' })
+
+    const className = current.container.querySelector('textarea')?.className ?? ''
+    expect(className).toContain('max-h-40')
+    expect(className).toContain('overflow-y-auto')
+    expect(className).not.toContain('overflow-hidden')
   })
 })

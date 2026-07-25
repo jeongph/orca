@@ -43,6 +43,7 @@ import {
   shouldHandleTextControlPaste
 } from '@/lib/text-control-paste'
 import { getScreenSubmitModifierLabel } from '@/lib/screen-submit-shortcut'
+import { useAutoSizedTextarea } from '@/hooks/useAutoSizedTextarea'
 import { useContextualTour } from '@/components/contextual-tours/use-contextual-tour'
 import { filterEnabledTuiAgents } from '../../../shared/tui-agent-selection'
 import type {
@@ -1118,6 +1119,7 @@ export default function NewWorkspaceComposerCard({
     },
     []
   )
+  const setNoteTextarea = useAutoSizedTextarea(note)
   const handleNotePaste = React.useCallback((event: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const text = event.clipboardData.getData('text/plain')
     const byteLengthMeasurement = measureTextControlPasteByteLength(text, {
@@ -1553,21 +1555,16 @@ export default function NewWorkspaceComposerCard({
                   {translate('auto.components.NewWorkspaceComposerCard.f8728aa4f9', 'Note')}
                 </label>
                 <textarea
+                  ref={setNoteTextarea}
                   value={note}
                   onChange={(event) => onNoteChange(event.target.value)}
                   onPaste={handleNotePaste}
-                  onInput={(event) => {
-                    // Why: reset then size to content so short notes stay compact and long ones grow without a scrollbar until max-h clamps.
-                    const ta = event.currentTarget
-                    ta.style.height = 'auto'
-                    ta.style.height = `${ta.scrollHeight}px`
-                  }}
                   placeholder={translate(
                     'auto.components.NewWorkspaceComposerCard.090cfedeb4',
                     'Write a note'
                   )}
                   rows={1}
-                  className="w-full min-w-0 resize-none overflow-hidden rounded-md border border-input bg-transparent px-3 py-1.5 text-sm shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 max-h-40"
+                  className="w-full min-w-0 resize-none overflow-y-auto scrollbar-sleek rounded-md border border-input bg-transparent px-3 py-1.5 text-sm shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 max-h-40"
                 />
               </div>
 
