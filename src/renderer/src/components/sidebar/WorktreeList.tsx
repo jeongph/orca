@@ -308,6 +308,7 @@ import {
   getPreferredWorktreeRows,
   getRenderedWorktreesInSidebarOrder
 } from './worktree-sidebar-row-preference'
+import { resolveCycledWorktreeId } from './worktree-keyboard-cycle'
 
 export {
   getScrollTopToRevealBounds,
@@ -2520,13 +2521,14 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
 
   const navigateWorktree = useCallback(
     (direction: 'up' | 'down') => {
-      // Why: cycle over an all-expanded layout so navigation doesn't skip worktrees in collapsed groups; reveal uncollapses the target.
+      // Why: cycle over the layout as shown — collapsing a group means "not now",
+      // so stepping into it and forcing it open fights the user's own choice.
       const allWorktreeRows = buildRows(
         groupBy,
         worktrees,
         repoMap,
         prCache,
-        new Set<string>(),
+        collapsedGroups,
         repoOrder,
         workspaceStatuses,
         projectOrderBy,
@@ -2546,28 +2548,15 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
         pinnedDisplayPolicy
       ).filter((r): r is Extract<Row, { type: 'item' }> => r.type === 'item')
       const worktreeRows = getPreferredWorktreeRows(allWorktreeRows, pinnedDisplayPolicy)
-      if (worktreeRows.length === 0) {
+      const nextWorktreeId = resolveCycledWorktreeId({
+        worktreeIds: worktreeRows.map((r) => r.worktree.id),
+        activeWorktreeId,
+        direction
+      })
+      if (nextWorktreeId === null) {
         return
       }
 
-      let nextIndex = 0
-      const currentIndex = worktreeRows.findIndex((r) => r.worktree.id === activeWorktreeId)
-
-      if (currentIndex !== -1) {
-        if (direction === 'up') {
-          nextIndex = currentIndex - 1
-          if (nextIndex < 0) {
-            nextIndex = worktreeRows.length - 1
-          }
-        } else {
-          nextIndex = currentIndex + 1
-          if (nextIndex >= worktreeRows.length) {
-            nextIndex = 0
-          }
-        }
-      }
-
-      const nextWorktreeId = worktreeRows[nextIndex].worktree.id
       // Why: keyboard cycling is real navigation; route through the activation helper that records history.
       activateAndRevealWorktree(nextWorktreeId)
 
@@ -2589,6 +2578,7 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
       worktrees,
       repoMap,
       defaultHostId,
+      collapsedGroups,
       prCache,
       repoOrder,
       workspaceStatuses,
