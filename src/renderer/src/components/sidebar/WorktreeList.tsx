@@ -302,6 +302,10 @@ import {
   getPreferredWorktreeRows,
   getRenderedWorktreesInSidebarOrder
 } from './worktree-sidebar-row-preference'
+import {
+  resolveWorktreeNavigationAnchorId,
+  resolveWorktreeNavigationTargetId
+} from './worktree-list-keyboard-navigation'
 
 export {
   getScrollTopToRevealBounds,
@@ -2491,29 +2495,25 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
         defaultHostId,
         pinnedDisplayPolicy
       ).filter((r): r is Extract<Row, { type: 'item' }> => r.type === 'item')
-      const worktreeRows = getPreferredWorktreeRows(allWorktreeRows, pinnedDisplayPolicy)
-      if (worktreeRows.length === 0) {
+      const navigableWorktreeIds = getPreferredWorktreeRows(
+        allWorktreeRows,
+        pinnedDisplayPolicy
+      ).map((r) => r.worktree.id)
+      // Why: read nav history at press time instead of subscribing — the sidebar re-renders on every entry.
+      const { worktreeNavHistory, worktreeNavHistoryIndex } = useAppStore.getState()
+      const nextWorktreeId = resolveWorktreeNavigationTargetId({
+        navigableWorktreeIds,
+        anchorWorktreeId: resolveWorktreeNavigationAnchorId({
+          selectedWorktreeId: activeWorktreeId,
+          navHistory: worktreeNavHistory,
+          navHistoryIndex: worktreeNavHistoryIndex,
+          navigableWorktreeIds
+        }),
+        direction
+      })
+      if (nextWorktreeId === null) {
         return
       }
-
-      let nextIndex = 0
-      const currentIndex = worktreeRows.findIndex((r) => r.worktree.id === activeWorktreeId)
-
-      if (currentIndex !== -1) {
-        if (direction === 'up') {
-          nextIndex = currentIndex - 1
-          if (nextIndex < 0) {
-            nextIndex = worktreeRows.length - 1
-          }
-        } else {
-          nextIndex = currentIndex + 1
-          if (nextIndex >= worktreeRows.length) {
-            nextIndex = 0
-          }
-        }
-      }
-
-      const nextWorktreeId = worktreeRows[nextIndex].worktree.id
       // Why: keyboard cycling is real navigation; route through the activation helper that records history.
       activateAndRevealWorktree(nextWorktreeId)
 
