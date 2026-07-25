@@ -14734,5 +14734,22 @@
         "unknown": "Restart Orca to try again."
       }
     }
+  },
+  "sidebar": {
+    "worktreeVisibility": {
+      "agentWorktrees": {
+        "hiddenTitle": "에이전트 워크트리 숨겨짐",
+        "shownTitle": "에이전트 워크트리 표시됨",
+        "hiddenCount": "{{path}}에 {{count}}개",
+        "shownCount": "현재 {{count}}개 표시됨",
+        "show": "표시",
+        "hide": "숨기기",
+        "showError": "에이전트 워크트리를 표시할 수 없습니다. 다시 시도해 주세요.",
+        "hideError": "에이전트 워크트리를 숨길 수 없습니다. 다시 시도해 주세요.",
+        "hiddenCountAcrossLocations": "{{locations}}곳에 걸쳐 {{count}}개",
+        "showAriaLabel": "에이전트 워크트리 표시",
+        "hideAriaLabel": "에이전트 워크트리 숨기기"
+      }
+    }
   }
 }

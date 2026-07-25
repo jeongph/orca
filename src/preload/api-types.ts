@@ -1250,6 +1250,7 @@ export type PreloadApi = {
           | 'kind'
           | 'issueSourcePreference'
           | 'externalWorktreeVisibility'
+          | 'agentWorktreeVisibility'
           | 'externalWorktreeVisibilityPromptDismissedAt'
           | 'externalWorktreeInboxBaselinePaths'
           | 'importedExternalWorktreePaths'

@@ -138,6 +138,23 @@
       "ariaActive": "Filter: {{value0}} active."
     }
   },
+  "sidebar": {
+    "worktreeVisibility": {
+      "agentWorktrees": {
+        "hiddenTitle": "Agent worktrees hidden",
+        "shownTitle": "Agent worktrees shown",
+        "hiddenCount": "{{count}} in {{path}}",
+        "hiddenCountAcrossLocations": "{{count}} across {{locations}} locations",
+        "shownCount": "{{count}} currently shown",
+        "show": "Show",
+        "hide": "Hide",
+        "showAriaLabel": "Show agent worktrees",
+        "hideAriaLabel": "Hide agent worktrees",
+        "showError": "Could not show agent worktrees. Try again.",
+        "hideError": "Could not hide agent worktrees. Try again."
+      }
+    }
+  },
   "auto": {
     "App": {
       "221a95ba38": "Retry onboarding or close it and continue in the app.",

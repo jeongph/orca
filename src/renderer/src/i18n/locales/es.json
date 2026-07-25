@@ -14723,5 +14723,22 @@
         "unknown": "Restart Orca to try again."
       }
     }
+  },
+  "sidebar": {
+    "worktreeVisibility": {
+      "agentWorktrees": {
+        "hiddenTitle": "Worktrees de agentes ocultos",
+        "shownTitle": "Worktrees de agentes mostrados",
+        "hiddenCount": "{{count}} en {{path}}",
+        "shownCount": "{{count}} mostrados actualmente",
+        "show": "Mostrar",
+        "hide": "Ocultar",
+        "showError": "No se pudieron mostrar los worktrees de agentes. Inténtalo de nuevo.",
+        "hideError": "No se pudieron ocultar los worktrees de agentes. Inténtalo de nuevo.",
+        "hiddenCountAcrossLocations": "{{count}} en {{locations}} ubicaciones",
+        "showAriaLabel": "Mostrar worktrees de agentes",
+        "hideAriaLabel": "Ocultar worktrees de agentes"
+      }
+    }
   }
 }

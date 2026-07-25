@@ -4812,6 +4812,7 @@ export class Store {
         | 'issueSourcePreference'
         | 'forkSyncMode'
         | 'externalWorktreeVisibility'
+        | 'agentWorktreeVisibility'
         | 'externalWorktreeVisibilityPromptDismissedAt'
         | 'externalWorktreeInboxBaselinePaths'
         | 'importedExternalWorktreePaths'

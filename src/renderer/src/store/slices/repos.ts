@@ -128,6 +128,7 @@ export type RepoUpdate = Partial<
     | 'issueSourcePreference'
     | 'forkSyncMode'
     | 'externalWorktreeVisibility'
+    | 'agentWorktreeVisibility'
     | 'externalWorktreeVisibilityPromptDismissedAt'
     | 'externalWorktreeInboxBaselinePaths'
     | 'importedExternalWorktreePaths'

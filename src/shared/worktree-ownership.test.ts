@@ -580,4 +580,76 @@ describe('agent scratch worktrees', () => {
       })
     ).not.toBe('agent-scratch')
   })
+
+  it('reveals agent scratch when the repo opts in', () => {
+    expect(
+      shouldShowWorktree({
+        repo: makeRepo({ agentWorktreeVisibility: 'show' }),
+        worktree: makeWorktree({ path: scratchPath, isMainWorktree: false }),
+        ownership: 'agent-scratch',
+        isLegacyRepoForVisibility: false,
+        isSelectedCheckout: false
+      })
+    ).toBe(true)
+  })
+
+  it('keeps agent scratch hidden when the repo has not opted in', () => {
+    for (const repo of [makeRepo(), makeRepo({ agentWorktreeVisibility: 'hide' })]) {
+      expect(
+        shouldShowWorktree({
+          repo,
+          worktree: makeWorktree({ path: scratchPath, isMainWorktree: false }),
+          ownership: 'agent-scratch',
+          isLegacyRepoForVisibility: false,
+          isSelectedCheckout: false
+        })
+      ).toBe(false)
+    }
+  })
+
+  it('opts in independently of the non-Orca worktree setting', () => {
+    // Why: the two toggles are orthogonal; 'hide' for externals must not veto the opt-in.
+    expect(
+      shouldShowWorktree({
+        repo: makeRepo({
+          externalWorktreeVisibility: 'hide',
+          agentWorktreeVisibility: 'show'
+        }),
+        worktree: makeWorktree({ path: scratchPath, isMainWorktree: false }),
+        ownership: 'agent-scratch',
+        isLegacyRepoForVisibility: false,
+        isSelectedCheckout: false
+      })
+    ).toBe(true)
+  })
+
+  it('marks opted-in agent scratch visible end to end', () => {
+    const repo = makeRepo({ agentWorktreeVisibility: 'show' })
+    const settings = makeSettings()
+    const detected = toDetectedWorktree({
+      repo,
+      settings,
+      worktree: makeWorktree({ path: scratchPath, isMainWorktree: false }),
+      knownOrcaLayouts: buildKnownOrcaWorkspaceLayouts(settings, repo)
+    })
+
+    expect(detected).toMatchObject({ ownership: 'agent-scratch', visible: true })
+  })
+
+  it('preserves an opted-in reveal through the metadata fallback', () => {
+    const repo = makeRepo({ agentWorktreeVisibility: 'show' })
+    const settings = makeSettings()
+    const detected = toDetectedWorktree({
+      repo,
+      settings,
+      worktree: makeWorktree({ path: scratchPath, isMainWorktree: false }),
+      knownOrcaLayouts: buildKnownOrcaWorkspaceLayouts(settings, repo)
+    })
+
+    const result = applyMetadataFallbackVisibility(detected)
+    expect(result).toBe(detected)
+    // Why: identity alone holds for any agent-scratch worktree regardless of
+    // the setting — assert the reveal itself so a broken gate would fail this.
+    expect(result).toMatchObject({ visible: true })
+  })
 })

@@ -14723,5 +14723,22 @@
         "unknown": "Restart Orca to try again."
       }
     }
+  },
+  "sidebar": {
+    "worktreeVisibility": {
+      "agentWorktrees": {
+        "hiddenTitle": "エージェントのワークツリーは非表示",
+        "shownTitle": "エージェントのワークツリーを表示中",
+        "hiddenCount": "{{path}}に{{count}}件",
+        "shownCount": "現在{{count}}件を表示中",
+        "show": "表示",
+        "hide": "非表示",
+        "showError": "エージェントのワークツリーを表示できませんでした。もう一度お試しください。",
+        "hideError": "エージェントのワークツリーを非表示にできませんでした。もう一度お試しください。",
+        "hiddenCountAcrossLocations": "{{locations}}箇所に{{count}}件",
+        "showAriaLabel": "エージェントのワークツリーを表示",
+        "hideAriaLabel": "エージェントのワークツリーを非表示"
+      }
+    }
   }
 }

@@ -18813,6 +18813,7 @@ export class OrcaRuntimeService {
         | 'symlinkPaths'
         | 'issueSourcePreference'
         | 'externalWorktreeVisibility'
+        | 'agentWorktreeVisibility'
         | 'externalWorktreeVisibilityPromptDismissedAt'
         | 'externalWorktreeInboxBaselinePaths'
         | 'importedExternalWorktreePaths'

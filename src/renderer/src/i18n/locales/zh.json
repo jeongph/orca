@@ -14743,5 +14743,22 @@
         "unknown": "请重启 Orca 以重试。"
       }
     }
+  },
+  "sidebar": {
+    "worktreeVisibility": {
+      "agentWorktrees": {
+        "hiddenTitle": "智能体工作树已隐藏",
+        "shownTitle": "智能体工作树已显示",
+        "hiddenCount": "{{path}} 中有 {{count}} 个",
+        "shownCount": "当前显示 {{count}} 个",
+        "show": "显示",
+        "hide": "隐藏",
+        "showError": "无法显示智能体工作树。请重试。",
+        "hideError": "无法隐藏智能体工作树。请重试。",
+        "hiddenCountAcrossLocations": "分布在 {{locations}} 个位置，共 {{count}} 个",
+        "showAriaLabel": "显示智能体工作树",
+        "hideAriaLabel": "隐藏智能体工作树"
+      }
+    }
   }
 }

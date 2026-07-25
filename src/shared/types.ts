@@ -278,6 +278,8 @@ export type Repo = {
   gitRemoteIdentity?: GitRemoteIdentity | null
   /** Controls whether worktrees Orca did not create appear in the sidebar. */
   externalWorktreeVisibility?: ExternalWorktreeVisibility
+  /** Controls whether coding-agent scratch worktrees (.claude/worktrees, …) reach the sidebar. */
+  agentWorktreeVisibility?: ExternalWorktreeVisibility
   /** True when the repo predates hidden-by-default external worktrees. */
   externalWorktreeVisibilityLegacy?: boolean
   /** One-shot guard for the optional existing-user visibility prompt. */

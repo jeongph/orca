@@ -8,8 +8,10 @@ import type {
   Worktree
 } from './types'
 import {
+  getHiddenAgentScratchWorktrees,
   getHiddenExternalWorktrees,
   getNewExternalWorktreeInboxWorktrees,
+  getVisibleAgentScratchWorktrees,
   getVisibleExternalWorktrees,
   mergeExternalWorktreeInboxPaths,
   shouldOfferNewExternalWorktreeInbox
@@ -206,5 +208,75 @@ describe('external worktree inbox', () => {
         repo
       )
     ).toEqual([])
+  })
+})
+
+describe('agent scratch accessors', () => {
+  const scratch = {
+    id: 'agent-scratch',
+    path: '/repos/app/.claude/worktrees/eager-dazzling-rose',
+    ownership: 'agent-scratch' as const,
+    selectedCheckout: false,
+    visible: false
+  } as unknown as DetectedWorktree
+  const external = {
+    id: 'external',
+    path: '/repos/manual',
+    ownership: 'external' as const,
+    selectedCheckout: false,
+    visible: false
+  } as unknown as DetectedWorktree
+  const selectedScratch = {
+    id: 'selected-scratch',
+    path: '/repos/app/.claude/worktrees/adopted',
+    ownership: 'agent-scratch' as const,
+    selectedCheckout: true,
+    visible: true
+  } as unknown as DetectedWorktree
+
+  function detectedList(worktrees: DetectedWorktree[]): DetectedWorktreeListResult {
+    return { authoritative: true, worktrees } as unknown as DetectedWorktreeListResult
+  }
+
+  it('returns only hidden agent scratch worktrees', () => {
+    expect(getHiddenAgentScratchWorktrees(detectedList([scratch, external]))).toEqual([scratch])
+  })
+
+  it('returns only visible agent scratch worktrees', () => {
+    const revealed = { ...scratch, visible: true }
+    expect(getVisibleAgentScratchWorktrees(detectedList([revealed, external]))).toEqual([revealed])
+    expect(getHiddenAgentScratchWorktrees(detectedList([revealed]))).toEqual([])
+  })
+
+  it('excludes the selected checkout from both counts', () => {
+    // Why: the selected checkout is always shown and is not what the toggle governs.
+    expect(getVisibleAgentScratchWorktrees(detectedList([selectedScratch]))).toEqual([])
+    // Test the hidden count with an actual hidden selected scratch to ensure
+    // !worktree.selectedCheckout guard is exercised.
+    const hiddenSelected = detectedWorktree({
+      id: 'hidden-selected-scratch',
+      ownership: 'agent-scratch',
+      selectedCheckout: true,
+      visible: false
+    })
+    expect(getHiddenAgentScratchWorktrees(detectedList([hiddenSelected]))).toEqual([])
+  })
+
+  it('returns nothing for a non-authoritative result', () => {
+    const stale = {
+      authoritative: false,
+      worktrees: [scratch]
+    } as unknown as DetectedWorktreeListResult
+    expect(getHiddenAgentScratchWorktrees(stale)).toEqual([])
+    expect(getVisibleAgentScratchWorktrees(stale)).toEqual([])
+    expect(getHiddenAgentScratchWorktrees(undefined)).toEqual([])
+    expect(getVisibleAgentScratchWorktrees(undefined)).toEqual([])
+  })
+
+  it('keeps the external accessors free of agent scratch', () => {
+    // Why: #9535 regression guard — the discovery card and inbox read these.
+    const list = detectedList([scratch, { ...scratch, visible: true }, external])
+    expect(getHiddenExternalWorktrees(list)).toEqual([external])
+    expect(getVisibleExternalWorktrees(list)).toEqual([])
   })
 })

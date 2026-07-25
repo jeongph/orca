@@ -54,6 +54,35 @@ export function getVisibleExternalWorktrees(
   )
 }
 
+export function getHiddenAgentScratchWorktrees(
+  detected: DetectedWorktreeListResult | undefined
+): DetectedWorktree[] {
+  return filterAgentScratchWorktrees(detected, false)
+}
+
+export function getVisibleAgentScratchWorktrees(
+  detected: DetectedWorktreeListResult | undefined
+): DetectedWorktree[] {
+  return filterAgentScratchWorktrees(detected, true)
+}
+
+function filterAgentScratchWorktrees(
+  detected: DetectedWorktreeListResult | undefined,
+  visible: boolean
+): DetectedWorktree[] {
+  if (detected?.authoritative !== true) {
+    return []
+  }
+  // Why: the selected checkout is always shown and is not governed by the
+  // agent-worktree toggle, so it belongs in neither count.
+  return detected.worktrees.filter(
+    (worktree) =>
+      worktree.visible === visible &&
+      worktree.ownership === 'agent-scratch' &&
+      !worktree.selectedCheckout
+  )
+}
+
 function isUserFacingExternalWorktree(worktree: DetectedWorktree): boolean {
   // Why: an explicit scratch import may be visible, but agent plumbing must
   // stay outside repo-wide discovery and visibility controls (#9388).

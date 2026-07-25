@@ -4230,6 +4230,19 @@ describe('Store', () => {
     ])
   })
 
+  it('persists agentWorktreeVisibility through updateRepo', async () => {
+    const store = await createStore()
+    store.addRepo(makeRepo())
+
+    const updated = store.updateRepo('r1', { agentWorktreeVisibility: 'show' })
+    expect(updated).not.toBeNull()
+    expect(updated!.agentWorktreeVisibility).toBe('show')
+    expect(store.getRepo('r1')!.agentWorktreeVisibility).toBe('show')
+
+    store.updateRepo('r1', { agentWorktreeVisibility: 'hide' })
+    expect(store.getRepo('r1')!.agentWorktreeVisibility).toBe('hide')
+  })
+
   it('updateRepo keeps project host setup compatibility records in sync', async () => {
     const store = await createStore()
     store.addRepo(makeRepo({ worktreeBasePath: '../worktrees' }))
