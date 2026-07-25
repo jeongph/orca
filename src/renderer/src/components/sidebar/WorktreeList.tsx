@@ -298,10 +298,7 @@ import {
   getProjectGroupExecutionHostIdForRows
 } from './worktree-list-host-filtering'
 import { getFolderWorkspaceCardPrDisplay } from './folder-workspace-card-pr-display'
-import {
-  getPreferredWorktreeRows,
-  getRenderedWorktreesInSidebarOrder
-} from './worktree-sidebar-row-preference'
+import { getRenderedWorktreesInSidebarOrder } from './worktree-sidebar-row-preference'
 import {
   resolveWorktreeNavigationAnchorId,
   resolveWorktreeNavigationTargetId
@@ -665,6 +662,8 @@ type VirtualizedWorktreeViewportProps = {
   agentSendTargetWorktreeId: string | null
   worktrees: Worktree[]
   folderWorkspaces: readonly FolderWorkspace[]
+  /** Host-scope-filtered subset that actually renders as rows; drives keyboard cycling. */
+  visibleFolderWorkspaces: readonly FolderWorkspace[]
   selectedWorktreeIds: ReadonlySet<string>
   selectedWorktrees: readonly Worktree[]
   onSelectionGesture: (event: React.MouseEvent<HTMLElement>, worktreeId: string) => boolean
@@ -1354,6 +1353,7 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
   agentSendTargetWorktreeId,
   worktrees,
   folderWorkspaces,
+  visibleFolderWorkspaces,
   selectedWorktreeIds,
   selectedWorktrees,
   onSelectionGesture,
@@ -2471,7 +2471,7 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
   const navigateWorktree = useCallback(
     (direction: 'up' | 'down') => {
       // Why: cycle over an all-expanded layout so navigation doesn't skip worktrees in collapsed groups; reveal uncollapses the target.
-      const allWorktreeRows = buildRows(
+      const allRows = buildRows(
         groupBy,
         worktrees,
         repoMap,
@@ -2490,15 +2490,16 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
         new Map(),
         [],
         projectGrouping,
-        [],
+        visibleFolderWorkspaces,
         undefined,
         defaultHostId,
         pinnedDisplayPolicy
-      ).filter((r): r is Extract<Row, { type: 'item' }> => r.type === 'item')
-      const navigableWorktreeIds = getPreferredWorktreeRows(
-        allWorktreeRows,
+      )
+      // Why: same ordering helper Cmd+1–9 uses, so folder workspaces cycle in visual order instead of being skipped.
+      const navigableWorktreeIds = getRenderedWorktreesInSidebarOrder(
+        allRows,
         pinnedDisplayPolicy
-      ).map((r) => r.worktree.id)
+      ).map((workspace) => workspace.id)
       // Why: read nav history at press time instead of subscribing — the sidebar re-renders on every entry.
       const { worktreeNavHistory, worktreeNavHistoryIndex } = useAppStore.getState()
       const nextWorktreeId = resolveWorktreeNavigationTargetId({
@@ -2543,7 +2544,8 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
       settings,
       projectGroups,
       projectGrouping,
-      pinnedDisplayPolicy
+      pinnedDisplayPolicy,
+      visibleFolderWorkspaces
     ]
   )
 
@@ -6769,6 +6771,7 @@ const WorktreeList = React.memo(function WorktreeList({
         agentSendTargetWorktreeId={agentSendTargetWorktreeId}
         worktrees={worktrees}
         folderWorkspaces={folderWorkspaces}
+        visibleFolderWorkspaces={visibleFolderWorkspacesForRows}
         selectedWorktreeIds={selectedWorktreeIds}
         selectedWorktrees={selectedWorktrees}
         onSelectionGesture={updateSelectionForGesture}
