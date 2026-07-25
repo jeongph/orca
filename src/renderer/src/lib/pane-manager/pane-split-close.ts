@@ -12,6 +12,7 @@ import {
   captureScrollState,
   equalizePaneSplitSizes,
   findPaneChildren,
+  isExplicitSplitRatio,
   promoteSibling,
   removeDividers,
   safeFit,
@@ -99,7 +100,9 @@ function getLayoutRoot(root: HTMLElement): HTMLElement | null {
 // would land at 50/25/25. Re-weight the whole tree unless the sizes are no
 // longer the caller's to choose — a dragged divider or a replayed ratio.
 function shouldEqualizeAfterSplit(args: SplitManagedPaneArgs): boolean {
-  if (args.opts?.preserveSiblingSizes || args.opts?.ratio !== undefined) {
+  // Why: share wrapInSplit's own test — a ratio it discards leaves an even
+  // split, which is still ours to re-weight.
+  if (args.opts?.preserveSiblingSizes || isExplicitSplitRatio(args.opts?.ratio)) {
     return false
   }
   return arePaneSplitSizesEqualized(getLayoutRoot(args.root))

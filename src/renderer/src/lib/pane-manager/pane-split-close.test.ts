@@ -17,6 +17,7 @@ vi.mock('./pane-tree-ops', () => ({
   captureScrollState,
   equalizePaneSplitSizes: vi.fn(),
   findPaneChildren: vi.fn(),
+  isExplicitSplitRatio: vi.fn(() => false),
   promoteSibling: vi.fn(),
   removeDividers: vi.fn(),
   safeFit: vi.fn(),

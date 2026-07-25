@@ -134,6 +134,15 @@ describe('splitManagedPane pane sizing', () => {
     expect(paneFlexGrowths(root)).toEqual([0.75, 0.25])
   })
 
+  it('equalizes past a ratio that would collapse a pane, since it is not applied', () => {
+    split(1)
+    // Why: wrapInSplit discards a ratio outside (0, 1), leaving an even split —
+    // so the layout is still ours to re-weight.
+    split(2, { ratio: 0 })
+
+    expect(paneFlexGrowths(root)).toEqual([0.333, 0.333, 0.333])
+  })
+
   it('keeps sizes when the caller preserves them', () => {
     split(1)
     split(2, { preserveSiblingSizes: true })
