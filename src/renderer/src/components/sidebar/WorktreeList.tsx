@@ -304,11 +304,8 @@ import {
   getVisibleSidebarHostIdSet
 } from './worktree-list-host-filtering'
 import { getFolderWorkspaceCardPrDisplay } from './folder-workspace-card-pr-display'
-import {
-  getPreferredWorktreeRows,
-  getRenderedWorktreesInSidebarOrder
-} from './worktree-sidebar-row-preference'
-import { resolveCycledWorktreeId } from './worktree-keyboard-cycle'
+import { getRenderedWorktreesInSidebarOrder } from './worktree-sidebar-row-preference'
+import { getCyclableWorktreeIds, resolveCycledWorktreeId } from './worktree-keyboard-cycle'
 
 export {
   getScrollTopToRevealBounds,
@@ -681,7 +678,6 @@ type VirtualizedWorktreeViewportProps = {
   worktreeMap: Map<string, Worktree>
   worktreeLineageById: Record<string, WorktreeLineage>
   workspaceLineageByChildKey: Record<string, WorkspaceLineage>
-  repoOrder: Map<string, number>
   // Full canonical repo-id order; must include hidden repos or a reorder silently drops them.
   allRepoIds: string[]
   onReorderHostSections: (orderedHostIds: ExecutionHostId[]) => void
@@ -1367,7 +1363,6 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
   worktreeMap,
   worktreeLineageById,
   workspaceLineageByChildKey,
-  repoOrder,
   allRepoIds,
   onReorderHostSections,
   onHostDragActiveChange,
@@ -2521,35 +2516,11 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
 
   const navigateWorktree = useCallback(
     (direction: 'up' | 'down') => {
-      // Why: cycle over the layout as shown — collapsing a group means "not now",
-      // so stepping into it and forcing it open fights the user's own choice.
-      const allWorktreeRows = buildRows(
-        groupBy,
-        worktrees,
-        repoMap,
-        prCache,
-        collapsedGroups,
-        repoOrder,
-        workspaceStatuses,
-        projectOrderBy,
-        worktreeLineageById,
-        worktreeMap,
-        true,
-        settings,
-        projectGroups,
-        new Set(),
-        new Map(),
-        new Map(),
-        [],
-        projectGrouping,
-        [],
-        undefined,
-        defaultHostId,
-        pinnedDisplayPolicy
-      ).filter((r): r is Extract<Row, { type: 'item' }> => r.type === 'item')
-      const worktreeRows = getPreferredWorktreeRows(allWorktreeRows, pinnedDisplayPolicy)
+      // Why: cycle over the rows the sidebar actually rendered — collapsing a group
+      // means "not now", and a rebuilt near-copy would drift from what is on screen
+      // (host sections, pinned placement, folder workspaces).
       const nextWorktreeId = resolveCycledWorktreeId({
-        worktreeIds: worktreeRows.map((r) => r.worktree.id),
+        worktreeIds: getCyclableWorktreeIds(rows, pinnedDisplayPolicy),
         activeWorktreeId,
         direction
       })
@@ -2569,26 +2540,7 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
         virtualizer.scrollToIndex(rowIndex, { align: 'auto' })
       }
     },
-    [
-      renderRows,
-      activeWorktreeId,
-      virtualizer,
-      groupBy,
-      projectOrderBy,
-      worktrees,
-      repoMap,
-      defaultHostId,
-      collapsedGroups,
-      prCache,
-      repoOrder,
-      workspaceStatuses,
-      worktreeLineageById,
-      worktreeMap,
-      settings,
-      projectGroups,
-      projectGrouping,
-      pinnedDisplayPolicy
-    ]
+    [rows, renderRows, activeWorktreeId, virtualizer, pinnedDisplayPolicy]
   )
 
   useEffect(() => {
@@ -6840,7 +6792,6 @@ const WorktreeList = React.memo(function WorktreeList({
         worktreeMap={worktreeMap}
         worktreeLineageById={worktreeLineageById}
         workspaceLineageByChildKey={workspaceLineageByChildKey}
-        repoOrder={repoOrder}
         allRepoIds={allRepoIds}
         onReorderHostSections={handleReorderHostSections}
         onHostDragActiveChange={setHostDragActive}
