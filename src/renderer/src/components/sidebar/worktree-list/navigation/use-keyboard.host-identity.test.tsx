@@ -14,10 +14,12 @@ vi.mock('@/lib/worktree-activation', () => ({
   activateAndRevealWorktree: (...args: unknown[]) => activateAndRevealWorktree(...args)
 }))
 
-vi.mock('@/store', () => ({
-  useAppStore: (selector: (state: { keybindings: undefined }) => unknown) =>
-    selector({ keybindings: undefined })
-}))
+vi.mock('@/store', () => {
+  const state = { keybindings: undefined, worktreeNavHistory: [], worktreeNavHistoryIndex: -1 }
+  const useAppStore = (selector: (s: typeof state) => unknown) => selector(state)
+  useAppStore.getState = () => state
+  return { useAppStore }
+})
 
 const { useWorktreeListKeyboardNavigation } = await import('./use-keyboard')
 

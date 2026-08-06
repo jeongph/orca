@@ -1,3 +1,4 @@
+import { isViewEntry, type WorktreeNavHistoryEntry } from '@/store/slices/worktree-nav-history'
 import type { HostSectionRow } from './host-section-rows'
 import type { Worktree } from '../../../../shared/worktree/types'
 import { composeWorktreeHostIdentity } from '../../../../shared/worktree/host-qualified-identity'
@@ -72,11 +73,42 @@ export function getCyclableWorktrees(
   return getCyclableWorktreeRows(rows, pinnedDisplayPolicy).map((row) => row.worktree)
 }
 
+// Why: history entries share their type with page sentinels and task details.
+function historyEntryWorkspaceId(entry: WorktreeNavHistoryEntry | undefined): string | null {
+  return entry === undefined || isViewEntry(entry) ? null : entry
+}
+
+/** Pick the row cycling steps from. Closing a workspace's last tab clears the selection
+ *  (landing fallback), so fall back to the nav-history cursor — otherwise every keypress
+ *  after a close re-enters the sidebar from its end instead of resuming where the user was. */
+export function resolveCycleAnchorWorktreeId(args: {
+  activeWorktreeId: string | null
+  navHistory: readonly WorktreeNavHistoryEntry[]
+  navHistoryIndex: number
+  worktreeIds: readonly string[]
+}): string | null {
+  const { activeWorktreeId, navHistory, navHistoryIndex } = args
+  // Why pass an uncyclable selection through: it means the row sits in a collapsed
+  // group, which resolveCycledWorktreeId answers by entering from the far end.
+  if (activeWorktreeId !== null) {
+    return activeWorktreeId
+  }
+  const cyclable = new Set(args.worktreeIds)
+  // Why not past the cursor: entries ahead of it are the goForward branch, not where the user is.
+  for (let index = Math.min(navHistoryIndex, navHistory.length - 1); index >= 0; index--) {
+    const workspaceId = historyEntryWorkspaceId(navHistory[index])
+    if (workspaceId !== null && cyclable.has(workspaceId)) {
+      return workspaceId
+    }
+  }
+  return null
+}
+
 /** Pick the worktree that `worktree.navigateUp` / `worktree.navigateDown` moves
  *  to, cycling within the worktrees the sidebar is currently showing. */
 export function resolveCycledWorktreeId(args: {
   worktreeIds: readonly string[]
-  activeWorktreeId: string | null
+  anchorWorktreeId: string | null
   direction: 'up' | 'down'
 }): string | null {
   const { worktreeIds, direction } = args
@@ -84,10 +116,10 @@ export function resolveCycledWorktreeId(args: {
     return null
   }
 
-  const currentIndex = args.activeWorktreeId ? worktreeIds.indexOf(args.activeWorktreeId) : -1
+  const currentIndex = args.anchorWorktreeId ? worktreeIds.indexOf(args.anchorWorktreeId) : -1
   if (currentIndex === -1) {
-    // Why: the active worktree can sit inside a collapsed group, so it is absent
-    // from the cyclable list; enter from the end the keypress points away from.
+    // Why: the anchor can sit inside a collapsed group, so it is absent from the
+    // cyclable list; enter from the end the keypress points away from.
     return (direction === 'down' ? worktreeIds[0] : worktreeIds.at(-1)) ?? null
   }
 

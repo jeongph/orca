@@ -13,6 +13,7 @@ import {
   getCyclableRowIdentity,
   getCyclableWorktreeRows,
   resolveActiveCycleIdentity,
+  resolveCycleAnchorWorktreeId,
   resolveCycledWorktreeId
 } from '../../worktree-keyboard-cycle'
 import { findPreferredRenderRowIndexForWorktreeIdentity } from './render-row-lookup'
@@ -67,12 +68,22 @@ export function useWorktreeListKeyboardNavigation(args: {
       // means "not now", and a rebuilt near-copy would drift from what is on screen
       // (host sections, pinned placement, folder workspaces).
       const worktreeRows = getCyclableWorktreeRows(rows, pinnedDisplayPolicy)
+      // Why getState: nav history is only read on the keypress; subscribing would re-render the sidebar on every visit.
+      const { worktreeNavHistory, worktreeNavHistoryIndex } = useAppStore.getState()
+      const anchorWorktreeId = resolveCycleAnchorWorktreeId({
+        activeWorktreeId,
+        navHistory: worktreeNavHistory,
+        navHistoryIndex: worktreeNavHistoryIndex,
+        worktreeIds: worktreeRows.map((row) => row.worktree.id)
+      })
       const nextWorktreeIdentity = resolveCycledWorktreeId({
         worktreeIds: worktreeRows.map(getCyclableRowIdentity),
-        activeWorktreeId: resolveActiveCycleIdentity({
+        // A history anchor names no host, so let the row it lands on resolve one.
+        anchorWorktreeId: resolveActiveCycleIdentity({
           rows: worktreeRows,
-          activeWorktreeId,
-          activeWorkspaceExecutionHostId
+          activeWorktreeId: anchorWorktreeId,
+          activeWorkspaceExecutionHostId:
+            anchorWorktreeId === activeWorktreeId ? activeWorkspaceExecutionHostId : null
         }),
         direction
       })
