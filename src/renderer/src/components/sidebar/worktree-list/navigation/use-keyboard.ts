@@ -2,7 +2,7 @@ import { useCallback, useEffect } from 'react'
 import type React from 'react'
 import type { Virtualizer } from '@tanstack/react-virtual'
 import { useAppStore } from '@/store'
-import { activateAndRevealWorktree } from '@/lib/worktree-activation'
+import { activateAndRevealWorkspace } from '@/lib/worktree-activation'
 import type { ExecutionHostId } from '../../../../../../shared/execution-host'
 import { getShortcutPlatform } from '@/lib/shortcut-platform'
 import { keybindingMatchesAction } from '../../../../../../shared/keybindings'
@@ -97,8 +97,9 @@ export function useWorktreeListKeyboardNavigation(args: {
         return
       }
 
-      // Why: keyboard cycling is real navigation; route through the activation helper that records history.
-      activateAndRevealWorktree(
+      // Why the workspace helper: cycling reaches folder workspaces too, and only it
+      // routes their `folder:` key. Real navigation, so it records history either way.
+      activateAndRevealWorkspace(
         nextWorktree.id,
         nextWorktree.hostId ? { executionHostId: nextWorktree.hostId } : {}
       )

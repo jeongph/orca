@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { folderWorkspaceKey } from '../../../../shared/workspace-scope'
 import type { HostSectionRow } from './host-section-rows'
 import {
   getCyclableWorktreeIds,
@@ -190,9 +191,9 @@ describe('getCyclableWorktreeIds', () => {
     ])
   })
 
-  it('leaves folder workspaces out of the rotation', () => {
-    // Why: their synthetic `folder:` id is not activatable through
-    // activateAndRevealWorktree, so arrowing onto one would be a dead keypress.
+  it('cycles folder workspaces in their rendered position', () => {
+    // Why: Cmd+1-9 already numbers them, so a visible folder workspace the arrow
+    // chord skipped was unreachable from the keyboard for no stated reason.
     const rows: HostSectionRow[] = [
       {
         type: 'folder-workspace',
@@ -205,7 +206,10 @@ describe('getCyclableWorktreeIds', () => {
       worktree('plain-b')
     ]
 
-    expect(getCyclableWorktreeIds(rows, 'single-location')).toEqual(['plain-b'])
+    expect(getCyclableWorktreeIds(rows, 'single-location')).toEqual([
+      folderWorkspaceKey('folder-1'),
+      'plain-b'
+    ])
   })
 
   it('drops worktrees the sidebar elided inside a collapsed host section', () => {
