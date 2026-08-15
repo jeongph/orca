@@ -155,8 +155,7 @@ describe('prepareActiveWorktreeFocusAfterDelete', () => {
   })
 
   it('leaves focus empty rather than waking a sleeping sibling', () => {
-    // Activating a slept workspace respawns its PTYs and resumes its agent sessions,
-    // so a delete must never pick one as the successor. #10205
+    // The reported flow: every survivor slept, so the delete revived one. #10205
     seed([
       { id: 'main', isMainWorktree: true, asleep: true },
       { id: 'wt-slept', asleep: true },

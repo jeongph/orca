@@ -41,11 +41,9 @@ function isHostedOnRuntimeOwnedSshTarget(
 // workspace of the same project (most-recently-visited first), and fall back to
 // the project's base/primary workspace when no other workspace remains.
 //
-// Only already-awake siblings qualify: activating a slept workspace respawns its
-// PTYs and resumes its agent sessions, so an unattended delete would otherwise
-// revive a session the user deliberately put to sleep. When every survivor is
-// asleep the selection stays empty, exactly as it does after sleeping the
-// focused workspace. #10205
+// Only awake siblings qualify: activating a slept workspace respawns its PTYs and
+// resumes its agent sessions. With none awake the selection stays empty, the same
+// state sleeping the focused workspace leaves behind. #10205
 function pickNextWorktreeIdAfterDelete(
   state: AppStoreState,
   repoId: string,
