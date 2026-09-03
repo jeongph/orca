@@ -185,7 +185,7 @@ describe('prepareActiveWorktreeFocusAfterDelete', () => {
     simulateDelete('wt-del', true)
     commit()
 
-    expect(activateAndRevealWorktree).toHaveBeenCalledWith('wt-awake')
+    expect(activateAndRevealWorktree).toHaveBeenCalledWith('wt-awake', { revealInSidebar: false })
   })
 
   it('keeps a sibling whose agent is live across a PTY gap eligible', () => {
@@ -210,7 +210,7 @@ describe('prepareActiveWorktreeFocusAfterDelete', () => {
     simulateDelete('wt-del', true)
     commit()
 
-    expect(activateAndRevealWorktree).toHaveBeenCalledWith('wt-agent')
+    expect(activateAndRevealWorktree).toHaveBeenCalledWith('wt-agent', { revealInSidebar: false })
   })
 
   it('stays within the deleted worktree project instead of jumping to another project', () => {
